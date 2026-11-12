@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Kennzeichen-Sammler</title>
+<style>
+/* =========================================================
+   1. FARBEN & THEMES (Light / Dark)
+   ========================================================= */
+:root {
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --surface-2: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #cbd5e1;
+  --accent: #2563eb;
+  --accent-soft: #dbeafe;
+  --ok: #16a34a;
+  --ok-soft: #dcfce7;
+  --danger: #dc2626;
+  --eu: #0b3d91;
+  --shadow: 0 1px 3px rgba(15,23,42,.08), 0 4px 14px rgba(15,23,42,.06);
+  --radius: 14px;
+  --nav-h: 64px;
+}
+[data-theme="dark"] {
+  --bg: #0b1120;
+  --surface: #131c2e;
+  --surface-2: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --border: #2b3a52;
+  --accent: #60a5fa;
+  --accent-soft: #1e3a5f;
+  --ok: #22c55e;
+  --ok-soft: #0f3a24;
+  --danger: #f87171;
+  --shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; overflow-x: hidden; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.4;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 14px; }
+.hidden { display: none !important; }
+
+/* =========================================================
+   2. KOPFBEREICH mit Gesamtfortschritt
+   ========================================================= */
+header.top {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--bg);
+  padding-top: env(safe-area-inset-top);
+  border-bottom: 1px solid var(--border);
+}
+.progress-head { display: flex; align-items: center; gap: 14px; padding: 12px 0 10px; }
+.progress-head h1 { font-size: 15px; margin: 0; color: var(--muted); font-weight: 600; }
+.count { font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
+.count small { font-size: 15px; color: var(--muted); font-weight: 600; }
+.pct { margin-left: auto; font-size: 26px; font-weight: 800; color: var(--accent); }
+.bar { height: 8px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--ok)); border-radius: 99px; transition: width .3s; }
+.progress-head + .bar { margin-bottom: 12px; }
+
+/* Suche & Filter */
+.search {
+  position: relative; display: flex; align-items: stretch;
+  width: 100%; max-width: 280px; height: 68px; margin: 0 auto 12px;
+  background: #fff; border: 3px solid #111; border-radius: 9px; overflow: hidden;
+  box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow);
+}
+.search:focus-within { box-shadow: 0 0 0 4px var(--accent), var(--shadow); }
+.search .eu {
+  width: 30px; flex-shrink: 0; background: var(--eu); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 6px 0 4px; font: 700 15px/1 Arial, sans-serif;
+}
+.search .eu svg { width: 20px; height: 20px; }
+.search input {
+  flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: #000;
+  text-align: center; text-transform: uppercase; padding: 0 40px 0 6px;
+  font-family: "DIN 1451 Mittelschrift", "DIN Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  font-weight: 700; font-size: 38px; letter-spacing: 2px;
+}
+.search input::placeholder { color: #c4c9d1; }
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+.search .clear {
+  position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 48px; border: 0; background: none; font-size: 22px; color: #64748b;
+}
+.filters { display: flex; gap: 8px; padding-bottom: 12px; flex-wrap: wrap; justify-content: center; }
+.chips { display: flex; background: var(--surface-2); border-radius: 12px; padding: 3px; }
+.chips button {
+  border: 0; background: none; padding: 10px 14px; border-radius: 9px;
+  font-weight: 600; font-size: 14px; color: var(--muted); min-height: 42px;
+}
+.chips button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+select {
+  flex: 1; min-width: 150px; min-height: 48px; font-size: 15px; padding: 0 12px;
+  border: 2px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text);
+}
+
+/* =========================================================
+   3. KENNZEICHEN-OPTIK (wie echtes deutsches Schild)
+   ========================================================= */
+.plate {
+  display: inline-flex; align-items: stretch; flex-shrink: 0;
+  height: 44px; min-width: 96px;
+  background: #fff; color: #000;
+  border: 2.5px solid #111; border-radius: 6px; overflow: hidden;
+  box-shadow: inset 0 0 0 1.5px #fff, 0 1px 2px rgba(0,0,0,.25);
+}
+.plate .eu {
+  width: 20px; background: var(--eu); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 3px 0 2px; font: 700 11px/1 Arial, sans-serif;
+}
+.plate .eu svg { width: 14px; height: 14px; }
+.plate .code {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 10px;
+  font-family: "DIN 1451 Mittelschrift", "DIN Condensed", "Arial Narrow", "Roboto Condensed", "Helvetica Neue", sans-serif;
+  font-weight: 700; font-size: 28px; letter-spacing: 1px; font-stretch: condensed;
+}
+.plate .seals { display: flex; flex-direction: column; gap: 2px; }
+.plate .seals i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.plate .seals i:first-child { background: #c9a227; }
+.plate .seals i:last-child { background: #9aa4b2; }
+.plate.big { height: 64px; min-width: 150px; }
+.plate.big .eu { width: 28px; font-size: 14px; }
+.plate.big .eu svg { width: 20px; height: 20px; }
+.plate.big .code { font-size: 42px; }
+
+/* =========================================================
+   4. LISTE
+   ========================================================= */
+.list { list-style: none; margin: 12px 0; padding: 0; display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; }
+.list > li { min-width: 0; }
+.item {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  min-height: 72px; padding: 12px 14px;
+  background: var(--surface); border: 2px solid transparent; border-radius: var(--radius);
+  box-shadow: var(--shadow); text-align: left;
+  transition: transform .08s, border-color .2s, background .2s;
+}
+.item:active { transform: scale(.985); }
+.item .info { flex: 1; min-width: 0; }
+.item .ort { display: block; font-weight: 650; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .meta { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .check {
+  width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%;
+  border: 2.5px solid var(--border); display: grid; place-items: center;
+  color: transparent; font-weight: 900; font-size: 18px;
+}
+.item.done { border-color: var(--ok); background: var(--ok-soft); }
+.item.done .check { background: var(--ok); border-color: var(--ok); color: #fff; }
+.badge {
+  display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px;
+  background: var(--accent-soft); color: var(--accent); margin-left: 6px; vertical-align: 2px;
+}
+.empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+.result-info { font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+/* =========================================================
+   5. STATISTIK / VERLAUF / DATEN
+   ========================================================= */
+.card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin: 14px 0; }
+.card h2 { margin: 0 0 12px; font-size: 18px; }
+.land-row {
+  display: block; width: 100%; border: 0; background: none; text-align: left;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.land-row:last-child { border-bottom: 0; }
+.land-row .line { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 15px; }
+.land-row .line b { font-weight: 650; }
+.land-row .line span { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.land-row.complete .line b::after { content: " ✓"; color: var(--ok); }
+.history-item { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.history-item:last-child { border-bottom: 0; }
+.history-item .when { font-size: 13px; color: var(--muted); }
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat-grid div { background: var(--surface-2); border-radius: 12px; padding: 12px; text-align: center; }
+.stat-grid b { display: block; font-size: 22px; }
+.stat-grid span { font-size: 12px; color: var(--muted); }
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 52px; margin: 8px 0; border-radius: 12px;
+  border: 2px solid var(--border); background: var(--surface); font-weight: 650; font-size: 16px;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.danger { color: var(--danger); border-color: var(--danger); background: none; }
+.hint { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+
+/* =========================================================
+   6. NAVIGATION (unten, daumenfreundlich)
+   ========================================================= */
+nav.bottom {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+nav.bottom .wrap { display: flex; padding: 0; }
+nav.bottom button {
+  flex: 1; height: var(--nav-h); border: 0; background: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: 12px; font-weight: 600; color: var(--muted);
+}
+nav.bottom button .ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; display: block; }
+nav.bottom button.active { color: var(--accent); }
+
+/* =========================================================
+   7. DIALOG & TOAST
+   ========================================================= */
+dialog {
+  border: 0; border-radius: 18px; padding: 22px; width: min(92vw, 400px);
+  background: var(--surface); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+dialog::backdrop { background: rgba(2,6,23,.55); }
+dialog h3 { margin: 14px 0 6px; font-size: 19px; }
+dialog p { margin: 0 0 6px; color: var(--muted); }
+dialog .actions { display: flex; gap: 10px; margin-top: 18px; }
+dialog .actions .btn { margin: 0; }
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 14px);
+  transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none;
+  background: #0f172a; color: #fff; border-radius: 12px; padding: 6px 6px 6px 16px;
+  display: flex; align-items: center; gap: 12px; z-index: 40; transition: .2s;
+  width: max-content; max-width: 92vw; box-shadow: 0 8px 24px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .toast { background: #e2e8f0; color: #0f172a; }
+.toast.show { opacity: 1; transform: translateX(-50%); pointer-events: auto; }
+.toast button { border: 0; background: none; color: #60a5fa; font-weight: 700; padding: 10px 12px; min-height: 44px; }
+[data-theme="dark"] .toast button { color: #1d4ed8; }
+
+@media (min-width: 700px) {
+  .list { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .item:hover { border-color: var(--accent); }
+  .item.done:hover { border-color: var(--danger); }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="progress-head">
+      <div>
+        <h1>Kennzeichen-Sammler</h1>
+        <div class="count"><span id="cnt">0</span> <small>/ <span id="total">0</span></small></div>
+      </div>
+      <div class="pct" id="pct">0 %</div>
+    </div>
+    <div class="bar"><i id="bar" style="width:0"></i></div>
+
+    <div id="listControls">
+      <div class="search">
+        <span class="eu" id="qEu"></span>
+        <input id="q" type="search" inputmode="text" enterkeyhint="done" autocomplete="off" autocorrect="off"
+               autocapitalize="characters" spellcheck="false" maxlength="6" autofocus
+               placeholder="OS" aria-label="Kürzel suchen">
+        <button class="clear hidden" id="clearQ" aria-label="Suche leeren">✕</button>
+      </div>
+      <div class="filters">
+        <div class="chips" id="statusChips">
+          <button data-f="alle" class="active">Alle</button>
+          <button data-f="fehlend">Fehlend</button>
+          <button data-f="gesammelt">Gesammelt</button>
+        </div>
+        <select id="landSel" aria-label="Bundesland"></select>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="view-liste">
+    <div class="result-info" id="resultInfo"></div>
+    <ul class="list" id="list"></ul>
+  </section>
+
+  <section id="view-stats" class="hidden">
+    <div class="card">
+      <h2>Übersicht</h2>
+      <div class="stat-grid" id="statGrid"></div>
+    </div>
+    <div class="card">
+      <h2>Nach Bundesland</h2>
+      <div id="landStats"></div>
+    </div>
+  </section>
+
+  <section id="view-verlauf" class="hidden">
+    <div class="card">
+      <h2>Zuletzt gesammelt</h2>
+      <div id="history"></div>
+    </div>
+  </section>
+
+  <section id="view-daten" class="hidden">
+    <div class="card">
+      <h2>Backup</h2>
+      <button class="btn primary" id="exportBtn">Backup exportieren (JSON)</button>
+      <button class="btn" id="importBtn">Backup importieren</button>
+      <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+      <p class="hint" id="syncInfo">Gespeichert nur in diesem Browser.</p>
+      <p class="hint">Ein Backup als JSON-Datei schadet trotzdem nie.</p>
+    </div>
+    <div class="card">
+      <h2>Darstellung</h2>
+      <div class="chips" id="themeChips" style="width:max-content">
+        <button data-t="auto">Automatisch</button>
+        <button data-t="light">Hell</button>
+        <button data-t="dark">Dunkel</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Zurücksetzen</h2>
+      <button class="btn danger" id="resetBtn">Alle gesammelten Kennzeichen löschen</button>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom">
+  <div class="wrap">
+    <button data-v="liste" class="active"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></span>Sammeln</button>
+    <button data-v="stats"><span class="ico"><svg viewBox="0 0 24 24"><path d="M5 20v-7M12 20V5M19 20v-10"/></svg></span>Statistik</button>
+    <button data-v="verlauf"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>Verlauf</button>
+    <button data-v="daten"><span class="ico"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></span>Daten</button>
+  </div>
+</nav>
+
+<dialog id="dlg">
+  <div id="dlgPlate"></div>
+  <h3 id="dlgTitle"></h3>
+  <p id="dlgText"></p>
+  <div class="actions">
+    <button class="btn" id="dlgCancel">Abbrechen</button>
+    <button class="btn danger" id="dlgOk">Entfernen</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"><span id="toastText"></span><button id="toastUndo">Rückgängig</button></div>
+
+<script>
+/* =========================================================================
+   KENNZEICHEN-DATEN
+   -------------------------------------------------------------------------
+   Hier kannst du die Liste erweitern oder korrigieren.
+   Felder:
+     kz       – Unterscheidungszeichen (eindeutig!)
+     ort      – heutige Stadt / heutiger Kreis, in dem das Kürzel ausgegeben wird
+     land     – Bundesland-Kürzel (siehe LAENDER weiter unten)
+     herkunft – wofür die Buchstaben stehen
+     alt      – optional: true = wieder eingeführtes Altkennzeichen
+   ========================================================================= */
+const KENNZEICHEN = [
+  // ---------- Baden-Württemberg ----------
+  {"kz":"AA","ort":"Ostalbkreis","land":"BW","herkunft":"Aalen"},
+  {"kz":"BAD","ort":"Baden-Baden","land":"BW","herkunft":"Baden-Baden"},
+  {"kz":"BB","ort":"Landkreis Böblingen","land":"BW","herkunft":"Böblingen"},
+  {"kz":"BC","ort":"Landkreis Biberach","land":"BW","herkunft":"Biberach an der Riß"},
+  {"kz":"BL","ort":"Zollernalbkreis","land":"BW","herkunft":"Balingen"},
+  {"kz":"BÜS","ort":"Büsingen am Hochrhein (Landkreis Konstanz)","land":"BW","herkunft":"Büsingen – deutsche Exklave in der Schweiz"},
+  {"kz":"CW","ort":"Landkreis Calw","land":"BW","herkunft":"Calw"},
+  {"kz":"EM","ort":"Landkreis Emmendingen","land":"BW","herkunft":"Emmendingen"},
+  {"kz":"ES","ort":"Landkreis Esslingen","land":"BW","herkunft":"Esslingen am Neckar"},
+  {"kz":"FDS","ort":"Landkreis Freudenstadt","land":"BW","herkunft":"Freudenstadt"},
+  {"kz":"FN","ort":"Bodenseekreis","land":"BW","herkunft":"Friedrichshafen"},
+  {"kz":"FR","ort":"Freiburg im Breisgau / Breisgau-Hochschwarzwald","land":"BW","herkunft":"Freiburg"},
+  {"kz":"GP","ort":"Landkreis Göppingen","land":"BW","herkunft":"Göppingen"},
+  {"kz":"HD","ort":"Heidelberg / Rhein-Neckar-Kreis","land":"BW","herkunft":"Heidelberg"},
+  {"kz":"HDH","ort":"Landkreis Heidenheim","land":"BW","herkunft":"Heidenheim an der Brenz"},
+  {"kz":"HN","ort":"Heilbronn (Stadt und Landkreis)","land":"BW","herkunft":"Heilbronn"},
+  {"kz":"KA","ort":"Karlsruhe (Stadt und Landkreis)","land":"BW","herkunft":"Karlsruhe"},
+  {"kz":"KN","ort":"Landkreis Konstanz","land":"BW","herkunft":"Konstanz"},
+  {"kz":"KÜN","ort":"Hohenlohekreis","land":"BW","herkunft":"Künzelsau"},
+  {"kz":"LB","ort":"Landkreis Ludwigsburg","land":"BW","herkunft":"Ludwigsburg"},
+  {"kz":"LÖ","ort":"Landkreis Lörrach","land":"BW","herkunft":"Lörrach"},
+  {"kz":"MA","ort":"Mannheim","land":"BW","herkunft":"Mannheim"},
+  {"kz":"MOS","ort":"Neckar-Odenwald-Kreis","land":"BW","herkunft":"Mosbach"},
+  {"kz":"OG","ort":"Ortenaukreis","land":"BW","herkunft":"Offenburg"},
+  {"kz":"PF","ort":"Pforzheim / Enzkreis","land":"BW","herkunft":"Pforzheim"},
+  {"kz":"RA","ort":"Landkreis Rastatt","land":"BW","herkunft":"Rastatt"},
+  {"kz":"RT","ort":"Landkreis Reutlingen","land":"BW","herkunft":"Reutlingen"},
+  {"kz":"RV","ort":"Landkreis Ravensburg","land":"BW","herkunft":"Ravensburg"},
+  {"kz":"RW","ort":"Landkreis Rottweil","land":"BW","herkunft":"Rottweil"},
+  {"kz":"S","ort":"Stuttgart","land":"BW","herkunft":"Stuttgart"},
+  {"kz":"SHA","ort":"Landkreis Schwäbisch Hall","land":"BW","herkunft":"Schwäbisch Hall"},
+  {"kz":"SIG","ort":"Landkreis Sigmaringen","land":"BW","herkunft":"Sigmaringen"},
+  {"kz":"TBB","ort":"Main-Tauber-Kreis","land":"BW","herkunft":"Tauberbischofsheim"},
+  {"kz":"TÜ","ort":"Landkreis Tübingen","land":"BW","herkunft":"Tübingen"},
+  {"kz":"TUT","ort":"Landkreis Tuttlingen","land":"BW","herkunft":"Tuttlingen"},
+  {"kz":"UL","ort":"Ulm / Alb-Donau-Kreis","land":"BW","herkunft":"Ulm"},
+  {"kz":"VS","ort":"Schwarzwald-Baar-Kreis","land":"BW","herkunft":"Villingen-Schwenningen"},
+  {"kz":"WN","ort":"Rems-Murr-Kreis","land":"BW","herkunft":"Waiblingen"},
+  {"kz":"WT","ort":"Landkreis Waldshut","land":"BW","herkunft":"Waldshut-Tiengen"},
+  {"kz":"BCH","ort":"Neckar-Odenwald-Kreis","land":"BW","herkunft":"Buchen (Odenwald)","alt":true},
+  {"kz":"BH","ort":"Landkreis Rastatt","land":"BW","herkunft":"Bühl","alt":true},
+  {"kz":"CR","ort":"Landkreis Schwäbisch Hall","land":"BW","herkunft":"Crailsheim","alt":true},
+  {"kz":"EHI","ort":"Alb-Donau-Kreis","land":"BW","herkunft":"Ehingen (Donau)","alt":true},
+  {"kz":"GD","ort":"Ostalbkreis","land":"BW","herkunft":"Schwäbisch Gmünd","alt":true},
+  {"kz":"HCH","ort":"Zollernalbkreis","land":"BW","herkunft":"Hechingen","alt":true},
+  {"kz":"HOR","ort":"Landkreis Freudenstadt","land":"BW","herkunft":"Horb am Neckar","alt":true},
+  {"kz":"KEL","ort":"Ortenaukreis","land":"BW","herkunft":"Kehl","alt":true},
+  {"kz":"LEO","ort":"Landkreis Böblingen","land":"BW","herkunft":"Leonberg","alt":true},
+  {"kz":"LR","ort":"Ortenaukreis","land":"BW","herkunft":"Lahr/Schwarzwald","alt":true},
+  {"kz":"MGH","ort":"Main-Tauber-Kreis","land":"BW","herkunft":"Bad Mergentheim","alt":true},
+  {"kz":"MÜL","ort":"Breisgau-Hochschwarzwald","land":"BW","herkunft":"Müllheim","alt":true},
+  {"kz":"NEU","ort":"Breisgau-Hochschwarzwald","land":"BW","herkunft":"Neustadt im Schwarzwald (Titisee-Neustadt)","alt":true},
+  {"kz":"NT","ort":"Landkreis Esslingen","land":"BW","herkunft":"Nürtingen","alt":true},
+  {"kz":"ÖHR","ort":"Hohenlohekreis","land":"BW","herkunft":"Öhringen","alt":true},
+  {"kz":"SÄK","ort":"Landkreis Waldshut","land":"BW","herkunft":"Bad Säckingen","alt":true},
+  {"kz":"SLG","ort":"Landkreis Sigmaringen","land":"BW","herkunft":"Bad Saulgau","alt":true},
+  {"kz":"STO","ort":"Landkreis Konstanz","land":"BW","herkunft":"Stockach","alt":true},
+  {"kz":"TT","ort":"Bodenseekreis","land":"BW","herkunft":"Tettnang","alt":true},
+  {"kz":"ÜB","ort":"Bodenseekreis","land":"BW","herkunft":"Überlingen","alt":true},
+  {"kz":"VAI","ort":"Landkreis Ludwigsburg","land":"BW","herkunft":"Vaihingen an der Enz","alt":true},
+  {"kz":"WOL","ort":"Ortenaukreis","land":"BW","herkunft":"Wolfach","alt":true},
+
+  // ---------- Bayern ----------
+  {"kz":"A","ort":"Augsburg (Stadt und Landkreis)","land":"BY","herkunft":"Augsburg"},
+  {"kz":"AB","ort":"Aschaffenburg (Stadt und Landkreis)","land":"BY","herkunft":"Aschaffenburg"},
+  {"kz":"AIC","ort":"Landkreis Aichach-Friedberg","land":"BY","herkunft":"Aichach"},
+  {"kz":"AM","ort":"Amberg","land":"BY","herkunft":"Amberg"},
+  {"kz":"AN","ort":"Ansbach (Stadt und Landkreis)","land":"BY","herkunft":"Ansbach"},
+  {"kz":"AÖ","ort":"Landkreis Altötting","land":"BY","herkunft":"Altötting"},
+  {"kz":"AS","ort":"Landkreis Amberg-Sulzbach","land":"BY","herkunft":"Amberg-Sulzbach"},
+  {"kz":"BA","ort":"Bamberg (Stadt und Landkreis)","land":"BY","herkunft":"Bamberg"},
+  {"kz":"BGL","ort":"Landkreis Berchtesgadener Land","land":"BY","herkunft":"Berchtesgadener Land"},
+  {"kz":"BT","ort":"Bayreuth (Stadt und Landkreis)","land":"BY","herkunft":"Bayreuth"},
+  {"kz":"CHA","ort":"Landkreis Cham","land":"BY","herkunft":"Cham"},
+  {"kz":"CO","ort":"Coburg (Stadt und Landkreis)","land":"BY","herkunft":"Coburg"},
+  {"kz":"DAH","ort":"Landkreis Dachau","land":"BY","herkunft":"Dachau"},
+  {"kz":"DEG","ort":"Landkreis Deggendorf","land":"BY","herkunft":"Deggendorf"},
+  {"kz":"DGF","ort":"Landkreis Dingolfing-Landau","land":"BY","herkunft":"Dingolfing"},
+  {"kz":"DLG","ort":"Landkreis Dillingen an der Donau","land":"BY","herkunft":"Dillingen"},
+  {"kz":"DON","ort":"Landkreis Donau-Ries","land":"BY","herkunft":"Donauwörth"},
+  {"kz":"EBE","ort":"Landkreis Ebersberg","land":"BY","herkunft":"Ebersberg"},
+  {"kz":"ED","ort":"Landkreis Erding","land":"BY","herkunft":"Erding"},
+  {"kz":"EI","ort":"Landkreis Eichstätt","land":"BY","herkunft":"Eichstätt"},
+  {"kz":"ER","ort":"Erlangen","land":"BY","herkunft":"Erlangen"},
+  {"kz":"ERH","ort":"Landkreis Erlangen-Höchstadt","land":"BY","herkunft":"Erlangen-Höchstadt"},
+  {"kz":"FFB","ort":"Landkreis Fürstenfeldbruck","land":"BY","herkunft":"Fürstenfeldbruck"},
+  {"kz":"FO","ort":"Landkreis Forchheim","land":"BY","herkunft":"Forchheim"},
+  {"kz":"FRG","ort":"Landkreis Freyung-Grafenau","land":"BY","herkunft":"Freyung-Grafenau"},
+  {"kz":"FS","ort":"Landkreis Freising","land":"BY","herkunft":"Freising"},
+  {"kz":"FÜ","ort":"Fürth (Stadt und Landkreis)","land":"BY","herkunft":"Fürth"},
+  {"kz":"GAP","ort":"Landkreis Garmisch-Partenkirchen","land":"BY","herkunft":"Garmisch-Partenkirchen"},
+  {"kz":"GZ","ort":"Landkreis Günzburg","land":"BY","herkunft":"Günzburg"},
+  {"kz":"HAS","ort":"Landkreis Haßberge","land":"BY","herkunft":"Haßberge"},
+  {"kz":"HO","ort":"Hof (Stadt und Landkreis)","land":"BY","herkunft":"Hof"},
+  {"kz":"IN","ort":"Ingolstadt","land":"BY","herkunft":"Ingolstadt"},
+  {"kz":"KC","ort":"Landkreis Kronach","land":"BY","herkunft":"Kronach"},
+  {"kz":"KE","ort":"Kempten (Allgäu)","land":"BY","herkunft":"Kempten"},
+  {"kz":"KEH","ort":"Landkreis Kelheim","land":"BY","herkunft":"Kelheim"},
+  {"kz":"KF","ort":"Kaufbeuren","land":"BY","herkunft":"Kaufbeuren"},
+  {"kz":"KG","ort":"Landkreis Bad Kissingen","land":"BY","herkunft":"Bad Kissingen"},
+  {"kz":"KT","ort":"Landkreis Kitzingen","land":"BY","herkunft":"Kitzingen"},
+  {"kz":"KU","ort":"Landkreis Kulmbach","land":"BY","herkunft":"Kulmbach"},
+  {"kz":"LA","ort":"Landshut (Stadt und Landkreis)","land":"BY","herkunft":"Landshut"},
+  {"kz":"LAU","ort":"Landkreis Nürnberger Land","land":"BY","herkunft":"Lauf an der Pegnitz"},
+  {"kz":"LI","ort":"Landkreis Lindau (Bodensee)","land":"BY","herkunft":"Lindau"},
+  {"kz":"LIF","ort":"Landkreis Lichtenfels","land":"BY","herkunft":"Lichtenfels"},
+  {"kz":"LL","ort":"Landkreis Landsberg am Lech","land":"BY","herkunft":"Landsberg am Lech"},
+  {"kz":"M","ort":"München (Stadt und Landkreis)","land":"BY","herkunft":"München"},
+  {"kz":"MB","ort":"Landkreis Miesbach","land":"BY","herkunft":"Miesbach"},
+  {"kz":"MIL","ort":"Landkreis Miltenberg","land":"BY","herkunft":"Miltenberg"},
+  {"kz":"MM","ort":"Memmingen","land":"BY","herkunft":"Memmingen"},
+  {"kz":"MN","ort":"Landkreis Unterallgäu","land":"BY","herkunft":"Mindelheim"},
+  {"kz":"MSP","ort":"Landkreis Main-Spessart","land":"BY","herkunft":"Main-Spessart"},
+  {"kz":"MÜ","ort":"Landkreis Mühldorf am Inn","land":"BY","herkunft":"Mühldorf"},
+  {"kz":"N","ort":"Nürnberg","land":"BY","herkunft":"Nürnberg"},
+  {"kz":"ND","ort":"Landkreis Neuburg-Schrobenhausen","land":"BY","herkunft":"Neuburg an der Donau"},
+  {"kz":"NEA","ort":"Landkreis Neustadt a. d. Aisch-Bad Windsheim","land":"BY","herkunft":"Neustadt an der Aisch"},
+  {"kz":"NES","ort":"Landkreis Rhön-Grabfeld","land":"BY","herkunft":"Bad Neustadt an der Saale"},
+  {"kz":"NEW","ort":"Landkreis Neustadt an der Waldnaab","land":"BY","herkunft":"Neustadt an der Waldnaab"},
+  {"kz":"NM","ort":"Landkreis Neumarkt in der Oberpfalz","land":"BY","herkunft":"Neumarkt"},
+  {"kz":"NU","ort":"Landkreis Neu-Ulm","land":"BY","herkunft":"Neu-Ulm"},
+  {"kz":"OA","ort":"Landkreis Oberallgäu","land":"BY","herkunft":"Oberallgäu"},
+  {"kz":"OAL","ort":"Landkreis Ostallgäu","land":"BY","herkunft":"Ostallgäu"},
+  {"kz":"PA","ort":"Passau (Stadt und Landkreis)","land":"BY","herkunft":"Passau"},
+  {"kz":"PAF","ort":"Landkreis Pfaffenhofen an der Ilm","land":"BY","herkunft":"Pfaffenhofen"},
+  {"kz":"PAN","ort":"Landkreis Rottal-Inn","land":"BY","herkunft":"Pfarrkirchen"},
+  {"kz":"R","ort":"Regensburg (Stadt und Landkreis)","land":"BY","herkunft":"Regensburg"},
+  {"kz":"REG","ort":"Landkreis Regen","land":"BY","herkunft":"Regen"},
+  {"kz":"RH","ort":"Landkreis Roth","land":"BY","herkunft":"Roth"},
+  {"kz":"RO","ort":"Rosenheim (Stadt und Landkreis)","land":"BY","herkunft":"Rosenheim"},
+  {"kz":"SAD","ort":"Landkreis Schwandorf","land":"BY","herkunft":"Schwandorf"},
+  {"kz":"SC","ort":"Schwabach","land":"BY","herkunft":"Schwabach"},
+  {"kz":"SR","ort":"Straubing / Landkreis Straubing-Bogen","land":"BY","herkunft":"Straubing"},
+  {"kz":"STA","ort":"Landkreis Starnberg","land":"BY","herkunft":"Starnberg"},
+  {"kz":"SW","ort":"Schweinfurt (Stadt und Landkreis)","land":"BY","herkunft":"Schweinfurt"},
+  {"kz":"TIR","ort":"Landkreis Tirschenreuth","land":"BY","herkunft":"Tirschenreuth"},
+  {"kz":"TÖL","ort":"Landkreis Bad Tölz-Wolfratshausen","land":"BY","herkunft":"Bad Tölz"},
+  {"kz":"TS","ort":"Landkreis Traunstein","land":"BY","herkunft":"Traunstein"},
+  {"kz":"WEN","ort":"Weiden in der Oberpfalz","land":"BY","herkunft":"Weiden (Weiden i. d. OPf. – „WEN“)"},
+  {"kz":"WM","ort":"Landkreis Weilheim-Schongau","land":"BY","herkunft":"Weilheim"},
+  {"kz":"WUG","ort":"Landkreis Weißenburg-Gunzenhausen","land":"BY","herkunft":"Weißenburg-Gunzenhausen"},
+  {"kz":"WÜ","ort":"Würzburg (Stadt und Landkreis)","land":"BY","herkunft":"Würzburg"},
+  {"kz":"WUN","ort":"Landkreis Wunsiedel im Fichtelgebirge","land":"BY","herkunft":"Wunsiedel"},
+  {"kz":"AIB","ort":"Landkreis Rosenheim","land":"BY","herkunft":"Bad Aibling","alt":true},
+  {"kz":"ALZ","ort":"Landkreis Aschaffenburg","land":"BY","herkunft":"Alzenau","alt":true},
+  {"kz":"BGD","ort":"Landkreis Berchtesgadener Land","land":"BY","herkunft":"Berchtesgaden","alt":true},
+  {"kz":"BOG","ort":"Landkreis Straubing-Bogen","land":"BY","herkunft":"Bogen","alt":true},
+  {"kz":"BRK","ort":"Landkreis Bad Kissingen","land":"BY","herkunft":"Bad Brückenau","alt":true},
+  {"kz":"BUL","ort":"Landkreis Schwandorf","land":"BY","herkunft":"Burglengenfeld","alt":true},
+  {"kz":"DKB","ort":"Landkreis Ansbach","land":"BY","herkunft":"Dinkelsbühl","alt":true},
+  {"kz":"EBN","ort":"Landkreis Haßberge","land":"BY","herkunft":"Ebern","alt":true},
+  {"kz":"EBS","ort":"Landkreis Forchheim","land":"BY","herkunft":"Ebermannstadt","alt":true},
+  {"kz":"EG","ort":"Landkreis Rottal-Inn","land":"BY","herkunft":"Eggenfelden","alt":true},
+  {"kz":"ESB","ort":"Landkreis Neustadt an der Waldnaab","land":"BY","herkunft":"Eschenbach in der Oberpfalz","alt":true},
+  {"kz":"FDB","ort":"Landkreis Aichach-Friedberg","land":"BY","herkunft":"Friedberg","alt":true},
+  {"kz":"FEU","ort":"Landkreis Ansbach","land":"BY","herkunft":"Feuchtwangen","alt":true},
+  {"kz":"FÜS","ort":"Landkreis Ostallgäu","land":"BY","herkunft":"Füssen","alt":true},
+  {"kz":"GEO","ort":"Landkreis Schweinfurt","land":"BY","herkunft":"Gerolzhofen","alt":true},
+  {"kz":"GRA","ort":"Landkreis Freyung-Grafenau","land":"BY","herkunft":"Grafenau","alt":true},
+  {"kz":"GRI","ort":"Landkreis Passau","land":"BY","herkunft":"Griesbach im Rottal","alt":true},
+  {"kz":"GUN","ort":"Landkreis Weißenburg-Gunzenhausen","land":"BY","herkunft":"Gunzenhausen","alt":true},
+  {"kz":"HAB","ort":"Landkreis Bad Kissingen","land":"BY","herkunft":"Hammelburg","alt":true},
+  {"kz":"HEB","ort":"Landkreis Nürnberger Land","land":"BY","herkunft":"Hersbruck","alt":true},
+  {"kz":"HIP","ort":"Landkreis Roth","land":"BY","herkunft":"Hilpoltstein","alt":true},
+  {"kz":"HÖS","ort":"Landkreis Erlangen-Höchstadt","land":"BY","herkunft":"Höchstadt an der Aisch","alt":true},
+  {"kz":"HOH","ort":"Landkreis Haßberge","land":"BY","herkunft":"Hofheim in Unterfranken","alt":true},
+  {"kz":"ILL","ort":"Landkreis Neu-Ulm","land":"BY","herkunft":"Illertissen","alt":true},
+  {"kz":"KAR","ort":"Landkreis Main-Spessart","land":"BY","herkunft":"Karlstadt","alt":true},
+  {"kz":"KEM","ort":"Landkreis Tirschenreuth","land":"BY","herkunft":"Kemnath","alt":true},
+  {"kz":"KÖN","ort":"Landkreis Rhön-Grabfeld","land":"BY","herkunft":"Bad Königshofen","alt":true},
+  {"kz":"KÖZ","ort":"Landkreis Cham","land":"BY","herkunft":"Kötzting","alt":true},
+  {"kz":"KRU","ort":"Landkreis Günzburg","land":"BY","herkunft":"Krumbach (Schwaben)","alt":true},
+  {"kz":"LAN","ort":"Landkreis Dingolfing-Landau","land":"BY","herkunft":"Landau an der Isar","alt":true},
+  {"kz":"LF","ort":"Landkreis Berchtesgadener Land","land":"BY","herkunft":"Laufen","alt":true},
+  {"kz":"LOH","ort":"Landkreis Main-Spessart","land":"BY","herkunft":"Lohr am Main","alt":true},
+  {"kz":"MAI","ort":"Landkreis Kelheim","land":"BY","herkunft":"Mainburg","alt":true},
+  {"kz":"MAK","ort":"Landkreis Wunsiedel im Fichtelgebirge","land":"BY","herkunft":"Marktredwitz","alt":true},
+  {"kz":"MAL","ort":"Landkreis Straubing-Bogen","land":"BY","herkunft":"Mallersdorf","alt":true},
+  {"kz":"MET","ort":"Landkreis Rhön-Grabfeld","land":"BY","herkunft":"Mellrichstadt","alt":true},
+  {"kz":"MOD","ort":"Landkreis Ostallgäu","land":"BY","herkunft":"Marktoberdorf","alt":true},
+  {"kz":"MÜB","ort":"Landkreis Hof","land":"BY","herkunft":"Münchberg","alt":true},
+  {"kz":"NAB","ort":"Landkreis Schwandorf","land":"BY","herkunft":"Nabburg","alt":true},
+  {"kz":"NAI","ort":"Landkreis Hof","land":"BY","herkunft":"Naila","alt":true},
+  {"kz":"NEC","ort":"Landkreis Coburg","land":"BY","herkunft":"Neustadt bei Coburg","alt":true},
+  {"kz":"NEN","ort":"Landkreis Schwandorf","land":"BY","herkunft":"Neunburg vorm Wald","alt":true},
+  {"kz":"NÖ","ort":"Landkreis Donau-Ries","land":"BY","herkunft":"Nördlingen","alt":true},
+  {"kz":"OBB","ort":"Landkreis Miltenberg","land":"BY","herkunft":"Obernburg am Main","alt":true},
+  {"kz":"OCH","ort":"Landkreis Würzburg","land":"BY","herkunft":"Ochsenfurt","alt":true},
+  {"kz":"OVI","ort":"Landkreis Schwandorf","land":"BY","herkunft":"Oberviechtach","alt":true},
+  {"kz":"PAR","ort":"Landkreis Neumarkt in der Oberpfalz","land":"BY","herkunft":"Parsberg","alt":true},
+  {"kz":"PEG","ort":"Landkreis Bayreuth","land":"BY","herkunft":"Pegnitz","alt":true},
+  {"kz":"REH","ort":"Landkreis Hof","land":"BY","herkunft":"Rehau","alt":true},
+  {"kz":"REI","ort":"Landkreis Berchtesgadener Land","land":"BY","herkunft":"Bad Reichenhall","alt":true},
+  {"kz":"RID","ort":"Landkreis Kelheim","land":"BY","herkunft":"Riedenburg","alt":true},
+  {"kz":"ROD","ort":"Landkreis Cham","land":"BY","herkunft":"Roding","alt":true},
+  {"kz":"ROL","ort":"Landkreis Landshut","land":"BY","herkunft":"Rottenburg an der Laaber","alt":true},
+  {"kz":"ROT","ort":"Landkreis Ansbach","land":"BY","herkunft":"Rothenburg ob der Tauber","alt":true},
+  {"kz":"SAN","ort":"Landkreis Kulmbach","land":"BY","herkunft":"Stadtsteinach","alt":true},
+  {"kz":"SEF","ort":"Landkreis Neustadt a. d. Aisch-Bad Windsheim","land":"BY","herkunft":"Scheinfeld","alt":true},
+  {"kz":"SEL","ort":"Landkreis Wunsiedel im Fichtelgebirge","land":"BY","herkunft":"Selb","alt":true},
+  {"kz":"SOB","ort":"Landkreis Neuburg-Schrobenhausen","land":"BY","herkunft":"Schrobenhausen","alt":true},
+  {"kz":"SOG","ort":"Landkreis Weilheim-Schongau","land":"BY","herkunft":"Schongau","alt":true},
+  {"kz":"SUL","ort":"Landkreis Amberg-Sulzbach","land":"BY","herkunft":"Sulzbach-Rosenberg","alt":true},
+  {"kz":"UFF","ort":"Landkreis Neustadt a. d. Aisch-Bad Windsheim","land":"BY","herkunft":"Uffenheim","alt":true},
+  {"kz":"VIB","ort":"Landkreis Landshut","land":"BY","herkunft":"Vilsbiburg","alt":true},
+  {"kz":"VIT","ort":"Landkreis Regen","land":"BY","herkunft":"Viechtach","alt":true},
+  {"kz":"VOF","ort":"Landkreis Passau","land":"BY","herkunft":"Vilshofen an der Donau","alt":true},
+  {"kz":"VOH","ort":"Landkreis Neustadt an der Waldnaab","land":"BY","herkunft":"Vohenstrauß","alt":true},
+  {"kz":"WER","ort":"Landkreis Dillingen an der Donau","land":"BY","herkunft":"Wertingen","alt":true},
+  {"kz":"WOR","ort":"Landkreis Bad Tölz-Wolfratshausen","land":"BY","herkunft":"Wolfratshausen","alt":true},
+  {"kz":"WS","ort":"Landkreis Rosenheim","land":"BY","herkunft":"Wasserburg am Inn","alt":true},
+  {"kz":"WÜM","ort":"Landkreis Cham","land":"BY","herkunft":"Waldmünchen","alt":true},
+
+  // ---------- Berlin, Bremen, Hamburg ----------
+  {"kz":"B","ort":"Berlin","land":"BE","herkunft":"Berlin"},
+  {"kz":"HB","ort":"Bremen und Bremerhaven","land":"HB","herkunft":"Hansestadt Bremen"},
+  {"kz":"HH","ort":"Hamburg","land":"HH","herkunft":"Hansestadt Hamburg"},
+
+  // ---------- Brandenburg ----------
+  {"kz":"BAR","ort":"Landkreis Barnim","land":"BB","herkunft":"Barnim"},
+  {"kz":"BRB","ort":"Brandenburg an der Havel","land":"BB","herkunft":"Brandenburg"},
+  {"kz":"CB","ort":"Cottbus","land":"BB","herkunft":"Cottbus"},
+  {"kz":"EE","ort":"Landkreis Elbe-Elster","land":"BB","herkunft":"Elbe-Elster"},
+  {"kz":"FF","ort":"Frankfurt (Oder)","land":"BB","herkunft":"Frankfurt (Oder)"},
+  {"kz":"HVL","ort":"Landkreis Havelland","land":"BB","herkunft":"Havelland"},
+  {"kz":"LDS","ort":"Landkreis Dahme-Spreewald","land":"BB","herkunft":"Landkreis Dahme-Spreewald"},
+  {"kz":"LOS","ort":"Landkreis Oder-Spree","land":"BB","herkunft":"Landkreis Oder-Spree"},
+  {"kz":"MOL","ort":"Landkreis Märkisch-Oderland","land":"BB","herkunft":"Märkisch-Oderland"},
+  {"kz":"OHV","ort":"Landkreis Oberhavel","land":"BB","herkunft":"Oberhavel"},
+  {"kz":"OPR","ort":"Landkreis Ostprignitz-Ruppin","land":"BB","herkunft":"Ostprignitz-Ruppin"},
+  {"kz":"OSL","ort":"Landkreis Oberspreewald-Lausitz","land":"BB","herkunft":"Oberspreewald-Lausitz"},
+  {"kz":"P","ort":"Potsdam","land":"BB","herkunft":"Potsdam"},
+  {"kz":"PM","ort":"Landkreis Potsdam-Mittelmark","land":"BB","herkunft":"Potsdam-Mittelmark"},
+  {"kz":"PR","ort":"Landkreis Prignitz","land":"BB","herkunft":"Prignitz"},
+  {"kz":"SPN","ort":"Landkreis Spree-Neiße","land":"BB","herkunft":"Spree-Neiße"},
+  {"kz":"TF","ort":"Landkreis Teltow-Fläming","land":"BB","herkunft":"Teltow-Fläming"},
+  {"kz":"UM","ort":"Landkreis Uckermark","land":"BB","herkunft":"Uckermark"},
+  {"kz":"ANG","ort":"Landkreis Uckermark","land":"BB","herkunft":"Angermünde","alt":true},
+  {"kz":"BEL","ort":"Landkreis Potsdam-Mittelmark","land":"BB","herkunft":"Bad Belzig","alt":true},
+  {"kz":"BER","ort":"Landkreis Barnim","land":"BB","herkunft":"Bernau bei Berlin","alt":true},
+  {"kz":"BSK","ort":"Landkreis Oder-Spree","land":"BB","herkunft":"Beeskow","alt":true},
+  {"kz":"CA","ort":"Landkreis Oberspreewald-Lausitz","land":"BB","herkunft":"Calau","alt":true},
+  {"kz":"EH","ort":"Landkreis Oder-Spree","land":"BB","herkunft":"Eisenhüttenstadt","alt":true},
+  {"kz":"EW","ort":"Landkreis Barnim","land":"BB","herkunft":"Eberswalde","alt":true},
+  {"kz":"FI","ort":"Landkreis Elbe-Elster","land":"BB","herkunft":"Finsterwalde","alt":true},
+  {"kz":"FOR","ort":"Landkreis Spree-Neiße","land":"BB","herkunft":"Forst (Lausitz)","alt":true},
+  {"kz":"FRW","ort":"Landkreis Märkisch-Oderland","land":"BB","herkunft":"Bad Freienwalde","alt":true},
+  {"kz":"FW","ort":"Landkreis Oder-Spree","land":"BB","herkunft":"Fürstenwalde/Spree","alt":true},
+  {"kz":"GUB","ort":"Landkreis Spree-Neiße","land":"BB","herkunft":"Guben","alt":true},
+  {"kz":"KW","ort":"Landkreis Dahme-Spreewald","land":"BB","herkunft":"Königs Wusterhausen","alt":true},
+  {"kz":"KY","ort":"Landkreis Ostprignitz-Ruppin","land":"BB","herkunft":"Kyritz","alt":true},
+  {"kz":"LC","ort":"Landkreis Dahme-Spreewald","land":"BB","herkunft":"Luckau","alt":true},
+  {"kz":"LIB","ort":"Landkreis Elbe-Elster","land":"BB","herkunft":"Bad Liebenwerda","alt":true},
+  {"kz":"LN","ort":"Landkreis Dahme-Spreewald","land":"BB","herkunft":"Lübben (Spreewald)","alt":true},
+  {"kz":"LUK","ort":"Landkreis Teltow-Fläming","land":"BB","herkunft":"Luckenwalde","alt":true},
+  {"kz":"NAU","ort":"Landkreis Havelland","land":"BB","herkunft":"Nauen","alt":true},
+  {"kz":"NP","ort":"Landkreis Ostprignitz-Ruppin","land":"BB","herkunft":"Neuruppin","alt":true},
+  {"kz":"PER","ort":"Landkreis Prignitz","land":"BB","herkunft":"Perleberg","alt":true},
+  {"kz":"PZ","ort":"Landkreis Uckermark","land":"BB","herkunft":"Prenzlau","alt":true},
+  {"kz":"RN","ort":"Landkreis Havelland","land":"BB","herkunft":"Rathenow","alt":true},
+  {"kz":"SDT","ort":"Landkreis Uckermark","land":"BB","herkunft":"Schwedt/Oder","alt":true},
+  {"kz":"SEE","ort":"Landkreis Märkisch-Oderland","land":"BB","herkunft":"Seelow","alt":true},
+  {"kz":"SFB","ort":"Landkreis Oberspreewald-Lausitz","land":"BB","herkunft":"Senftenberg","alt":true},
+  {"kz":"SPB","ort":"Landkreis Spree-Neiße","land":"BB","herkunft":"Spremberg","alt":true},
+  {"kz":"SRB","ort":"Landkreis Märkisch-Oderland","land":"BB","herkunft":"Strausberg","alt":true},
+  {"kz":"TP","ort":"Landkreis Uckermark","land":"BB","herkunft":"Templin","alt":true},
+  {"kz":"WK","ort":"Landkreis Ostprignitz-Ruppin","land":"BB","herkunft":"Wittstock/Dosse","alt":true},
+  {"kz":"ZS","ort":"Landkreis Teltow-Fläming","land":"BB","herkunft":"Zossen","alt":true},
+
+  // ---------- Hessen ----------
+  {"kz":"DA","ort":"Darmstadt / Landkreis Darmstadt-Dieburg","land":"HE","herkunft":"Darmstadt"},
+  {"kz":"ERB","ort":"Odenwaldkreis","land":"HE","herkunft":"Erbach"},
+  {"kz":"ESW","ort":"Werra-Meißner-Kreis","land":"HE","herkunft":"Eschwege"},
+  {"kz":"F","ort":"Frankfurt am Main","land":"HE","herkunft":"Frankfurt"},
+  {"kz":"FB","ort":"Wetteraukreis","land":"HE","herkunft":"Friedberg (Hessen)"},
+  {"kz":"FD","ort":"Landkreis Fulda","land":"HE","herkunft":"Fulda"},
+  {"kz":"GG","ort":"Landkreis Groß-Gerau","land":"HE","herkunft":"Groß-Gerau"},
+  {"kz":"GI","ort":"Landkreis Gießen","land":"HE","herkunft":"Gießen"},
+  {"kz":"HEF","ort":"Landkreis Hersfeld-Rotenburg","land":"HE","herkunft":"Bad Hersfeld"},
+  {"kz":"HG","ort":"Hochtaunuskreis","land":"HE","herkunft":"Bad Homburg vor der Höhe"},
+  {"kz":"HP","ort":"Kreis Bergstraße","land":"HE","herkunft":"Heppenheim"},
+  {"kz":"HR","ort":"Schwalm-Eder-Kreis","land":"HE","herkunft":"Homberg (Efze)"},
+  {"kz":"KB","ort":"Landkreis Waldeck-Frankenberg","land":"HE","herkunft":"Korbach"},
+  {"kz":"KS","ort":"Kassel (Stadt und Landkreis)","land":"HE","herkunft":"Kassel"},
+  {"kz":"LDK","ort":"Lahn-Dill-Kreis","land":"HE","herkunft":"Lahn-Dill-Kreis"},
+  {"kz":"LM","ort":"Landkreis Limburg-Weilburg","land":"HE","herkunft":"Limburg an der Lahn"},
+  {"kz":"MKK","ort":"Main-Kinzig-Kreis","land":"HE","herkunft":"Main-Kinzig-Kreis"},
+  {"kz":"MR","ort":"Landkreis Marburg-Biedenkopf","land":"HE","herkunft":"Marburg"},
+  {"kz":"MTK","ort":"Main-Taunus-Kreis","land":"HE","herkunft":"Main-Taunus-Kreis"},
+  {"kz":"OF","ort":"Offenbach am Main (Stadt und Landkreis)","land":"HE","herkunft":"Offenbach"},
+  {"kz":"RÜD","ort":"Rheingau-Taunus-Kreis","land":"HE","herkunft":"Rüdesheim am Rhein"},
+  {"kz":"VB","ort":"Vogelsbergkreis","land":"HE","herkunft":"Vogelsberg"},
+  {"kz":"WI","ort":"Wiesbaden","land":"HE","herkunft":"Wiesbaden"},
+  {"kz":"ALS","ort":"Vogelsbergkreis","land":"HE","herkunft":"Alsfeld","alt":true},
+  {"kz":"BID","ort":"Landkreis Marburg-Biedenkopf","land":"HE","herkunft":"Biedenkopf","alt":true},
+  {"kz":"BÜD","ort":"Wetteraukreis","land":"HE","herkunft":"Büdingen","alt":true},
+  {"kz":"DI","ort":"Landkreis Darmstadt-Dieburg","land":"HE","herkunft":"Dieburg","alt":true},
+  {"kz":"DIL","ort":"Lahn-Dill-Kreis","land":"HE","herkunft":"Dillenburg","alt":true},
+  {"kz":"FKB","ort":"Landkreis Waldeck-Frankenberg","land":"HE","herkunft":"Frankenberg (Eder)","alt":true},
+  {"kz":"FZ","ort":"Schwalm-Eder-Kreis","land":"HE","herkunft":"Fritzlar","alt":true},
+  {"kz":"GN","ort":"Main-Kinzig-Kreis","land":"HE","herkunft":"Gelnhausen","alt":true},
+  {"kz":"HOG","ort":"Landkreis Kassel","land":"HE","herkunft":"Hofgeismar","alt":true},
+  {"kz":"HU","ort":"Main-Kinzig-Kreis","land":"HE","herkunft":"Hanau","alt":true},
+  {"kz":"HÜN","ort":"Landkreis Fulda","land":"HE","herkunft":"Hünfeld","alt":true},
+  {"kz":"LAT","ort":"Vogelsbergkreis","land":"HE","herkunft":"Lauterbach (Hessen)","alt":true},
+  {"kz":"MEG","ort":"Schwalm-Eder-Kreis","land":"HE","herkunft":"Melsungen","alt":true},
+  {"kz":"ROF","ort":"Landkreis Hersfeld-Rotenburg","land":"HE","herkunft":"Rotenburg an der Fulda","alt":true},
+  {"kz":"SLÜ","ort":"Main-Kinzig-Kreis","land":"HE","herkunft":"Schlüchtern","alt":true},
+  {"kz":"SWA","ort":"Rheingau-Taunus-Kreis","land":"HE","herkunft":"Bad Schwalbach","alt":true},
+  {"kz":"USI","ort":"Hochtaunuskreis","land":"HE","herkunft":"Usingen","alt":true},
+  {"kz":"WEL","ort":"Landkreis Limburg-Weilburg","land":"HE","herkunft":"Weilburg","alt":true},
+  {"kz":"WIZ","ort":"Werra-Meißner-Kreis","land":"HE","herkunft":"Witzenhausen","alt":true},
+  {"kz":"WOH","ort":"Landkreis Kassel","land":"HE","herkunft":"Wolfhagen","alt":true},
+  {"kz":"WZ","ort":"Lahn-Dill-Kreis","land":"HE","herkunft":"Wetzlar","alt":true},
+  {"kz":"ZIG","ort":"Schwalm-Eder-Kreis","land":"HE","herkunft":"Ziegenhain","alt":true},
+
+  // ---------- Mecklenburg-Vorpommern ----------
+  {"kz":"HRO","ort":"Rostock","land":"MV","herkunft":"Hansestadt Rostock"},
+  {"kz":"LRO","ort":"Landkreis Rostock","land":"MV","herkunft":"Landkreis Rostock"},
+  {"kz":"LUP","ort":"Landkreis Ludwigslust-Parchim","land":"MV","herkunft":"Ludwigslust-Parchim"},
+  {"kz":"MSE","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Mecklenburgische Seenplatte"},
+  {"kz":"NWM","ort":"Landkreis Nordwestmecklenburg","land":"MV","herkunft":"Nordwestmecklenburg"},
+  {"kz":"SN","ort":"Schwerin","land":"MV","herkunft":"Schwerin"},
+  {"kz":"VG","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Vorpommern-Greifswald"},
+  {"kz":"VR","ort":"Landkreis Vorpommern-Rügen","land":"MV","herkunft":"Vorpommern-Rügen"},
+  {"kz":"ANK","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Anklam","alt":true},
+  {"kz":"AT","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Altentreptow","alt":true},
+  {"kz":"BÜZ","ort":"Landkreis Rostock","land":"MV","herkunft":"Bützow","alt":true},
+  {"kz":"DBR","ort":"Landkreis Rostock","land":"MV","herkunft":"Bad Doberan","alt":true},
+  {"kz":"DM","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Demmin","alt":true},
+  {"kz":"GDB","ort":"Landkreis Nordwestmecklenburg","land":"MV","herkunft":"Gadebusch","alt":true},
+  {"kz":"GMN","ort":"Landkreis Vorpommern-Rügen","land":"MV","herkunft":"Grimmen","alt":true},
+  {"kz":"GNZ","ort":"Landkreis Rostock","land":"MV","herkunft":"Gnoien","alt":true},
+  {"kz":"GÜ","ort":"Landkreis Rostock","land":"MV","herkunft":"Güstrow","alt":true},
+  {"kz":"GVM","ort":"Landkreis Nordwestmecklenburg","land":"MV","herkunft":"Grevesmühlen","alt":true},
+  {"kz":"HGN","ort":"Landkreis Ludwigslust-Parchim","land":"MV","herkunft":"Hagenow","alt":true},
+  {"kz":"HGW","ort":"Greifswald","land":"MV","herkunft":"Hansestadt Greifswald","alt":true},
+  {"kz":"HST","ort":"Stralsund","land":"MV","herkunft":"Hansestadt Stralsund","alt":true},
+  {"kz":"HWI","ort":"Wismar","land":"MV","herkunft":"Hansestadt Wismar","alt":true},
+  {"kz":"LBZ","ort":"Landkreis Ludwigslust-Parchim","land":"MV","herkunft":"Lübz","alt":true},
+  {"kz":"LWL","ort":"Landkreis Ludwigslust-Parchim","land":"MV","herkunft":"Ludwigslust","alt":true},
+  {"kz":"MC","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Malchin","alt":true},
+  {"kz":"MST","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Mecklenburg-Strelitz","alt":true},
+  {"kz":"MÜR","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Müritz","alt":true},
+  {"kz":"NB","ort":"Neubrandenburg","land":"MV","herkunft":"Neubrandenburg","alt":true},
+  {"kz":"NVP","ort":"Landkreis Vorpommern-Rügen","land":"MV","herkunft":"Nordvorpommern","alt":true},
+  {"kz":"NZ","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Neustrelitz","alt":true},
+  {"kz":"OVP","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Ostvorpommern","alt":true},
+  {"kz":"PCH","ort":"Landkreis Ludwigslust-Parchim","land":"MV","herkunft":"Parchim","alt":true},
+  {"kz":"PW","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Pasewalk","alt":true},
+  {"kz":"RDG","ort":"Landkreis Vorpommern-Rügen","land":"MV","herkunft":"Ribnitz-Damgarten","alt":true},
+  {"kz":"RÜG","ort":"Landkreis Vorpommern-Rügen","land":"MV","herkunft":"Rügen","alt":true},
+  {"kz":"SBG","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Strasburg (Uckermark)","alt":true},
+  {"kz":"STB","ort":"Landkreis Ludwigslust-Parchim","land":"MV","herkunft":"Sternberg","alt":true},
+  {"kz":"TET","ort":"Landkreis Rostock","land":"MV","herkunft":"Teterow","alt":true},
+  {"kz":"UEM","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Ueckermünde","alt":true},
+  {"kz":"WLG","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Wolgast","alt":true},
+  {"kz":"WRN","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Waren (Müritz)","alt":true},
+
+  // ---------- Niedersachsen ----------
+  {"kz":"AUR","ort":"Landkreis Aurich","land":"NI","herkunft":"Aurich"},
+  {"kz":"BRA","ort":"Landkreis Wesermarsch","land":"NI","herkunft":"Brake (Unterweser)"},
+  {"kz":"BS","ort":"Braunschweig","land":"NI","herkunft":"Braunschweig"},
+  {"kz":"CE","ort":"Landkreis Celle","land":"NI","herkunft":"Celle"},
+  {"kz":"CLP","ort":"Landkreis Cloppenburg","land":"NI","herkunft":"Cloppenburg"},
+  {"kz":"CUX","ort":"Landkreis Cuxhaven","land":"NI","herkunft":"Cuxhaven"},
+  {"kz":"DAN","ort":"Landkreis Lüchow-Dannenberg","land":"NI","herkunft":"Dannenberg (Elbe)"},
+  {"kz":"DEL","ort":"Delmenhorst","land":"NI","herkunft":"Delmenhorst"},
+  {"kz":"DH","ort":"Landkreis Diepholz","land":"NI","herkunft":"Diepholz"},
+  {"kz":"EL","ort":"Landkreis Emsland","land":"NI","herkunft":"Emsland"},
+  {"kz":"EMD","ort":"Emden","land":"NI","herkunft":"Emden"},
+  {"kz":"FRI","ort":"Landkreis Friesland","land":"NI","herkunft":"Friesland"},
+  {"kz":"GF","ort":"Landkreis Gifhorn","land":"NI","herkunft":"Gifhorn"},
+  {"kz":"GÖ","ort":"Landkreis Göttingen","land":"NI","herkunft":"Göttingen"},
+  {"kz":"GS","ort":"Landkreis Goslar","land":"NI","herkunft":"Goslar"},
+  {"kz":"H","ort":"Region Hannover","land":"NI","herkunft":"Hannover"},
+  {"kz":"HE","ort":"Landkreis Helmstedt","land":"NI","herkunft":"Helmstedt"},
+  {"kz":"HI","ort":"Landkreis Hildesheim","land":"NI","herkunft":"Hildesheim"},
+  {"kz":"HK","ort":"Heidekreis","land":"NI","herkunft":"Heidekreis"},
+  {"kz":"HM","ort":"Landkreis Hameln-Pyrmont","land":"NI","herkunft":"Hameln"},
+  {"kz":"HOL","ort":"Landkreis Holzminden","land":"NI","herkunft":"Holzminden"},
+  {"kz":"LER","ort":"Landkreis Leer","land":"NI","herkunft":"Leer (Ostfriesland)"},
+  {"kz":"LG","ort":"Landkreis Lüneburg","land":"NI","herkunft":"Lüneburg"},
+  {"kz":"NI","ort":"Landkreis Nienburg/Weser","land":"NI","herkunft":"Nienburg"},
+  {"kz":"NOH","ort":"Landkreis Grafschaft Bentheim","land":"NI","herkunft":"Nordhorn"},
+  {"kz":"NOM","ort":"Landkreis Northeim","land":"NI","herkunft":"Northeim"},
+  {"kz":"OHA","ort":"Landkreis Göttingen","land":"NI","herkunft":"Osterode am Harz"},
+  {"kz":"OHZ","ort":"Landkreis Osterholz","land":"NI","herkunft":"Osterholz-Scharmbeck"},
+  {"kz":"OL","ort":"Oldenburg (Stadt und Landkreis)","land":"NI","herkunft":"Oldenburg"},
+  {"kz":"OS","ort":"Osnabrück (Stadt und Landkreis)","land":"NI","herkunft":"Osnabrück"},
+  {"kz":"PE","ort":"Landkreis Peine","land":"NI","herkunft":"Peine"},
+  {"kz":"ROW","ort":"Landkreis Rotenburg (Wümme)","land":"NI","herkunft":"Rotenburg (Wümme)"},
+  {"kz":"SHG","ort":"Landkreis Schaumburg","land":"NI","herkunft":"Schaumburg"},
+  {"kz":"STD","ort":"Landkreis Stade","land":"NI","herkunft":"Stade"},
+  {"kz":"SZ","ort":"Salzgitter","land":"NI","herkunft":"Salzgitter"},
+  {"kz":"UE","ort":"Landkreis Uelzen","land":"NI","herkunft":"Uelzen"},
+  {"kz":"VEC","ort":"Landkreis Vechta","land":"NI","herkunft":"Vechta"},
+  {"kz":"VER","ort":"Landkreis Verden","land":"NI","herkunft":"Verden (Aller)"},
+  {"kz":"WF","ort":"Landkreis Wolfenbüttel","land":"NI","herkunft":"Wolfenbüttel"},
+  {"kz":"WHV","ort":"Wilhelmshaven","land":"NI","herkunft":"Wilhelmshaven"},
+  {"kz":"WL","ort":"Landkreis Harburg","land":"NI","herkunft":"Winsen (Luhe)"},
+  {"kz":"WOB","ort":"Wolfsburg","land":"NI","herkunft":"Wolfsburg"},
+  {"kz":"WST","ort":"Landkreis Ammerland","land":"NI","herkunft":"Westerstede"},
+  {"kz":"WTM","ort":"Landkreis Wittmund","land":"NI","herkunft":"Wittmund"},
+  {"kz":"ALF","ort":"Landkreis Hildesheim","land":"NI","herkunft":"Alfeld (Leine)","alt":true},
+  {"kz":"BRV","ort":"Landkreis Rotenburg (Wümme)","land":"NI","herkunft":"Bremervörde","alt":true},
+  {"kz":"BSB","ort":"Landkreis Osnabrück","land":"NI","herkunft":"Bersenbrück","alt":true},
+  {"kz":"CLZ","ort":"Landkreis Goslar","land":"NI","herkunft":"Clausthal-Zellerfeld","alt":true},
+  {"kz":"DUD","ort":"Landkreis Göttingen","land":"NI","herkunft":"Duderstadt","alt":true},
+  {"kz":"EIN","ort":"Landkreis Northeim","land":"NI","herkunft":"Einbeck","alt":true},
+  {"kz":"GAN","ort":"Landkreis Northeim","land":"NI","herkunft":"Bad Gandersheim","alt":true},
+  {"kz":"HMÜ","ort":"Landkreis Göttingen","land":"NI","herkunft":"Hann. Münden","alt":true},
+  {"kz":"MEL","ort":"Landkreis Osnabrück","land":"NI","herkunft":"Melle","alt":true},
+  {"kz":"SFA","ort":"Heidekreis","land":"NI","herkunft":"Soltau-Fallingbostel","alt":true},
+  {"kz":"WTL","ort":"Landkreis Osnabrück","land":"NI","herkunft":"Wittlage","alt":true},
+
+  // ---------- Nordrhein-Westfalen ----------
+  {"kz":"AC","ort":"Städteregion Aachen","land":"NW","herkunft":"Aachen"},
+  {"kz":"BI","ort":"Bielefeld","land":"NW","herkunft":"Bielefeld"},
+  {"kz":"BM","ort":"Rhein-Erft-Kreis","land":"NW","herkunft":"Bergheim"},
+  {"kz":"BN","ort":"Bonn","land":"NW","herkunft":"Bonn"},
+  {"kz":"BO","ort":"Bochum","land":"NW","herkunft":"Bochum"},
+  {"kz":"BOR","ort":"Kreis Borken","land":"NW","herkunft":"Borken"},
+  {"kz":"BOT","ort":"Bottrop","land":"NW","herkunft":"Bottrop"},
+  {"kz":"COE","ort":"Kreis Coesfeld","land":"NW","herkunft":"Coesfeld"},
+  {"kz":"D","ort":"Düsseldorf","land":"NW","herkunft":"Düsseldorf"},
+  {"kz":"DN","ort":"Kreis Düren","land":"NW","herkunft":"Düren"},
+  {"kz":"DO","ort":"Dortmund","land":"NW","herkunft":"Dortmund"},
+  {"kz":"DU","ort":"Duisburg","land":"NW","herkunft":"Duisburg"},
+  {"kz":"E","ort":"Essen","land":"NW","herkunft":"Essen"},
+  {"kz":"EN","ort":"Ennepe-Ruhr-Kreis","land":"NW","herkunft":"Ennepe"},
+  {"kz":"EU","ort":"Kreis Euskirchen","land":"NW","herkunft":"Euskirchen"},
+  {"kz":"GE","ort":"Gelsenkirchen","land":"NW","herkunft":"Gelsenkirchen"},
+  {"kz":"GL","ort":"Rheinisch-Bergischer Kreis","land":"NW","herkunft":"Bergisch Gladbach"},
+  {"kz":"GM","ort":"Oberbergischer Kreis","land":"NW","herkunft":"Gummersbach"},
+  {"kz":"GT","ort":"Kreis Gütersloh","land":"NW","herkunft":"Gütersloh"},
+  {"kz":"HA","ort":"Hagen","land":"NW","herkunft":"Hagen"},
+  {"kz":"HAM","ort":"Hamm","land":"NW","herkunft":"Hamm"},
+  {"kz":"HER","ort":"Herne","land":"NW","herkunft":"Herne"},
+  {"kz":"HF","ort":"Kreis Herford","land":"NW","herkunft":"Herford"},
+  {"kz":"HS","ort":"Kreis Heinsberg","land":"NW","herkunft":"Heinsberg"},
+  {"kz":"HSK","ort":"Hochsauerlandkreis","land":"NW","herkunft":"Hochsauerlandkreis"},
+  {"kz":"HX","ort":"Kreis Höxter","land":"NW","herkunft":"Höxter"},
+  {"kz":"K","ort":"Köln","land":"NW","herkunft":"Köln"},
+  {"kz":"KLE","ort":"Kreis Kleve","land":"NW","herkunft":"Kleve"},
+  {"kz":"KR","ort":"Krefeld","land":"NW","herkunft":"Krefeld"},
+  {"kz":"LEV","ort":"Leverkusen","land":"NW","herkunft":"Leverkusen"},
+  {"kz":"LIP","ort":"Kreis Lippe","land":"NW","herkunft":"Lippe"},
+  {"kz":"ME","ort":"Kreis Mettmann","land":"NW","herkunft":"Mettmann"},
+  {"kz":"MG","ort":"Mönchengladbach","land":"NW","herkunft":"Mönchengladbach"},
+  {"kz":"MH","ort":"Mülheim an der Ruhr","land":"NW","herkunft":"Mülheim"},
+  {"kz":"MI","ort":"Kreis Minden-Lübbecke","land":"NW","herkunft":"Minden"},
+  {"kz":"MK","ort":"Märkischer Kreis","land":"NW","herkunft":"Märkischer Kreis"},
+  {"kz":"MS","ort":"Münster","land":"NW","herkunft":"Münster"},
+  {"kz":"NE","ort":"Rhein-Kreis Neuss","land":"NW","herkunft":"Neuss"},
+  {"kz":"OB","ort":"Oberhausen","land":"NW","herkunft":"Oberhausen"},
+  {"kz":"OE","ort":"Kreis Olpe","land":"NW","herkunft":"Olpe"},
+  {"kz":"PB","ort":"Kreis Paderborn","land":"NW","herkunft":"Paderborn"},
+  {"kz":"RE","ort":"Kreis Recklinghausen","land":"NW","herkunft":"Recklinghausen"},
+  {"kz":"RS","ort":"Remscheid","land":"NW","herkunft":"Remscheid"},
+  {"kz":"SG","ort":"Solingen","land":"NW","herkunft":"Solingen"},
+  {"kz":"SI","ort":"Kreis Siegen-Wittgenstein","land":"NW","herkunft":"Siegen"},
+  {"kz":"SO","ort":"Kreis Soest","land":"NW","herkunft":"Soest"},
+  {"kz":"ST","ort":"Kreis Steinfurt","land":"NW","herkunft":"Steinfurt"},
+  {"kz":"SU","ort":"Rhein-Sieg-Kreis","land":"NW","herkunft":"Siegburg"},
+  {"kz":"UN","ort":"Kreis Unna","land":"NW","herkunft":"Unna"},
+  {"kz":"VIE","ort":"Kreis Viersen","land":"NW","herkunft":"Viersen"},
+  {"kz":"W","ort":"Wuppertal","land":"NW","herkunft":"Wuppertal"},
+  {"kz":"WAF","ort":"Kreis Warendorf","land":"NW","herkunft":"Warendorf"},
+  {"kz":"WES","ort":"Kreis Wesel","land":"NW","herkunft":"Wesel"},
+  {"kz":"AH","ort":"Kreis Borken","land":"NW","herkunft":"Ahaus","alt":true},
+  {"kz":"AR","ort":"Hochsauerlandkreis","land":"NW","herkunft":"Arnsberg","alt":true},
+  {"kz":"BE","ort":"Kreis Warendorf","land":"NW","herkunft":"Beckum","alt":true},
+  {"kz":"BLB","ort":"Kreis Siegen-Wittgenstein","land":"NW","herkunft":"Bad Berleburg","alt":true},
+  {"kz":"BRI","ort":"Hochsauerlandkreis","land":"NW","herkunft":"Brilon","alt":true},
+  {"kz":"BÜR","ort":"Kreis Paderborn","land":"NW","herkunft":"Büren","alt":true},
+  {"kz":"CAS","ort":"Kreis Recklinghausen","land":"NW","herkunft":"Castrop-Rauxel","alt":true},
+  {"kz":"DIN","ort":"Kreis Wesel","land":"NW","herkunft":"Dinslaken","alt":true},
+  {"kz":"ERK","ort":"Kreis Heinsberg","land":"NW","herkunft":"Erkelenz","alt":true},
+  {"kz":"GEL","ort":"Kreis Kleve","land":"NW","herkunft":"Geldern","alt":true},
+  {"kz":"GK","ort":"Kreis Heinsberg","land":"NW","herkunft":"Geilenkirchen","alt":true},
+  {"kz":"GLA","ort":"Kreis Recklinghausen","land":"NW","herkunft":"Gladbeck","alt":true},
+  {"kz":"GV","ort":"Rhein-Kreis Neuss","land":"NW","herkunft":"Grevenbroich","alt":true},
+  {"kz":"ISL","ort":"Märkischer Kreis","land":"NW","herkunft":"Iserlohn","alt":true},
+  {"kz":"JÜL","ort":"Kreis Düren","land":"NW","herkunft":"Jülich","alt":true},
+  {"kz":"KK","ort":"Kreis Viersen","land":"NW","herkunft":"Kempen-Krefeld","alt":true},
+  {"kz":"LH","ort":"Kreis Coesfeld","land":"NW","herkunft":"Lüdinghausen","alt":true},
+  {"kz":"LP","ort":"Kreis Soest","land":"NW","herkunft":"Lippstadt","alt":true},
+  {"kz":"LÜD","ort":"Märkischer Kreis","land":"NW","herkunft":"Lüdenscheid","alt":true},
+  {"kz":"LÜN","ort":"Kreis Unna","land":"NW","herkunft":"Lünen","alt":true},
+  {"kz":"MES","ort":"Hochsauerlandkreis","land":"NW","herkunft":"Meschede","alt":true},
+  {"kz":"MO","ort":"Kreis Wesel","land":"NW","herkunft":"Moers","alt":true},
+  {"kz":"MON","ort":"Städteregion Aachen","land":"NW","herkunft":"Monschau","alt":true},
+  {"kz":"SLE","ort":"Kreis Euskirchen","land":"NW","herkunft":"Schleiden","alt":true},
+  {"kz":"TE","ort":"Kreis Steinfurt","land":"NW","herkunft":"Tecklenburg","alt":true},
+  {"kz":"WAN","ort":"Herne","land":"NW","herkunft":"Wanne-Eickel","alt":true},
+  {"kz":"WAR","ort":"Kreis Höxter","land":"NW","herkunft":"Warburg","alt":true},
+  {"kz":"WAT","ort":"Bochum","land":"NW","herkunft":"Wattenscheid","alt":true},
+  {"kz":"WIT","ort":"Ennepe-Ruhr-Kreis","land":"NW","herkunft":"Witten","alt":true},
+
+  // ---------- Rheinland-Pfalz ----------
+  {"kz":"AK","ort":"Landkreis Altenkirchen (Westerwald)","land":"RP","herkunft":"Altenkirchen"},
+  {"kz":"AW","ort":"Landkreis Ahrweiler","land":"RP","herkunft":"Ahrweiler"},
+  {"kz":"AZ","ort":"Landkreis Alzey-Worms","land":"RP","herkunft":"Alzey"},
+  {"kz":"BIR","ort":"Landkreis Birkenfeld","land":"RP","herkunft":"Birkenfeld"},
+  {"kz":"BIT","ort":"Eifelkreis Bitburg-Prüm","land":"RP","herkunft":"Bitburg"},
+  {"kz":"COC","ort":"Landkreis Cochem-Zell","land":"RP","herkunft":"Cochem"},
+  {"kz":"DAU","ort":"Landkreis Vulkaneifel","land":"RP","herkunft":"Daun"},
+  {"kz":"DÜW","ort":"Landkreis Bad Dürkheim","land":"RP","herkunft":"Bad Dürkheim an der Weinstraße"},
+  {"kz":"EMS","ort":"Rhein-Lahn-Kreis","land":"RP","herkunft":"Bad Ems"},
+  {"kz":"FT","ort":"Frankenthal (Pfalz)","land":"RP","herkunft":"Frankenthal"},
+  {"kz":"GER","ort":"Landkreis Germersheim","land":"RP","herkunft":"Germersheim"},
+  {"kz":"KH","ort":"Landkreis Bad Kreuznach","land":"RP","herkunft":"Bad Kreuznach"},
+  {"kz":"KIB","ort":"Donnersbergkreis","land":"RP","herkunft":"Kirchheimbolanden"},
+  {"kz":"KL","ort":"Kaiserslautern (Stadt und Landkreis)","land":"RP","herkunft":"Kaiserslautern"},
+  {"kz":"KO","ort":"Koblenz","land":"RP","herkunft":"Koblenz"},
+  {"kz":"KUS","ort":"Landkreis Kusel","land":"RP","herkunft":"Kusel"},
+  {"kz":"LD","ort":"Landau in der Pfalz","land":"RP","herkunft":"Landau"},
+  {"kz":"LU","ort":"Ludwigshafen am Rhein","land":"RP","herkunft":"Ludwigshafen"},
+  {"kz":"MYK","ort":"Landkreis Mayen-Koblenz","land":"RP","herkunft":"Mayen-Koblenz"},
+  {"kz":"MZ","ort":"Mainz / Landkreis Mainz-Bingen","land":"RP","herkunft":"Mainz"},
+  {"kz":"NR","ort":"Landkreis Neuwied","land":"RP","herkunft":"Neuwied am Rhein"},
+  {"kz":"NW","ort":"Neustadt an der Weinstraße","land":"RP","herkunft":"Neustadt an der Weinstraße"},
+  {"kz":"PS","ort":"Pirmasens / Landkreis Südwestpfalz","land":"RP","herkunft":"Pirmasens"},
+  {"kz":"RP","ort":"Rhein-Pfalz-Kreis","land":"RP","herkunft":"Rhein-Pfalz"},
+  {"kz":"SIM","ort":"Rhein-Hunsrück-Kreis","land":"RP","herkunft":"Simmern/Hunsrück"},
+  {"kz":"SP","ort":"Speyer","land":"RP","herkunft":"Speyer"},
+  {"kz":"SÜW","ort":"Landkreis Südliche Weinstraße","land":"RP","herkunft":"Südliche Weinstraße"},
+  {"kz":"TR","ort":"Trier / Landkreis Trier-Saarburg","land":"RP","herkunft":"Trier"},
+  {"kz":"WIL","ort":"Landkreis Bernkastel-Wittlich","land":"RP","herkunft":"Wittlich"},
+  {"kz":"WO","ort":"Worms","land":"RP","herkunft":"Worms"},
+  {"kz":"WW","ort":"Westerwaldkreis","land":"RP","herkunft":"Westerwald"},
+  {"kz":"ZW","ort":"Zweibrücken / Landkreis Südwestpfalz","land":"RP","herkunft":"Zweibrücken"},
+  {"kz":"BIN","ort":"Landkreis Mainz-Bingen","land":"RP","herkunft":"Bingen am Rhein","alt":true},
+  {"kz":"BKS","ort":"Landkreis Bernkastel-Wittlich","land":"RP","herkunft":"Bernkastel-Kues","alt":true},
+  {"kz":"DIZ","ort":"Rhein-Lahn-Kreis","land":"RP","herkunft":"Diez","alt":true},
+  {"kz":"GOA","ort":"Rhein-Hunsrück-Kreis","land":"RP","herkunft":"St. Goar","alt":true},
+  {"kz":"GOH","ort":"Rhein-Lahn-Kreis","land":"RP","herkunft":"St. Goarshausen","alt":true},
+  {"kz":"MY","ort":"Landkreis Mayen-Koblenz","land":"RP","herkunft":"Mayen","alt":true},
+  {"kz":"PRÜ","ort":"Eifelkreis Bitburg-Prüm","land":"RP","herkunft":"Prüm","alt":true},
+  {"kz":"ROK","ort":"Donnersbergkreis","land":"RP","herkunft":"Rockenhausen","alt":true},
+  {"kz":"SAB","ort":"Landkreis Trier-Saarburg","land":"RP","herkunft":"Saarburg","alt":true},
+  {"kz":"ZEL","ort":"Landkreis Cochem-Zell","land":"RP","herkunft":"Zell (Mosel)","alt":true},
+
+  // ---------- Saarland ----------
+  {"kz":"HOM","ort":"Saarpfalz-Kreis","land":"SL","herkunft":"Homburg"},
+  {"kz":"MZG","ort":"Landkreis Merzig-Wadern","land":"SL","herkunft":"Merzig"},
+  {"kz":"NK","ort":"Landkreis Neunkirchen","land":"SL","herkunft":"Neunkirchen"},
+  {"kz":"SB","ort":"Regionalverband Saarbrücken","land":"SL","herkunft":"Saarbrücken"},
+  {"kz":"SLS","ort":"Landkreis Saarlouis","land":"SL","herkunft":"Saarlouis"},
+  {"kz":"WND","ort":"Landkreis St. Wendel","land":"SL","herkunft":"St. Wendel"},
+  {"kz":"IGB","ort":"Saarpfalz-Kreis","land":"SL","herkunft":"St. Ingbert","alt":true},
+  {"kz":"VK","ort":"Regionalverband Saarbrücken","land":"SL","herkunft":"Völklingen","alt":true},
+
+  // ---------- Sachsen ----------
+  {"kz":"BZ","ort":"Landkreis Bautzen","land":"SN","herkunft":"Bautzen"},
+  {"kz":"C","ort":"Chemnitz","land":"SN","herkunft":"Chemnitz"},
+  {"kz":"DD","ort":"Dresden","land":"SN","herkunft":"Dresden"},
+  {"kz":"ERZ","ort":"Erzgebirgskreis","land":"SN","herkunft":"Erzgebirge"},
+  {"kz":"FG","ort":"Landkreis Mittelsachsen","land":"SN","herkunft":"Freiberg"},
+  {"kz":"GR","ort":"Landkreis Görlitz","land":"SN","herkunft":"Görlitz"},
+  {"kz":"L","ort":"Leipzig / Landkreis Leipzig","land":"SN","herkunft":"Leipzig"},
+  {"kz":"MEI","ort":"Landkreis Meißen","land":"SN","herkunft":"Meißen"},
+  {"kz":"PIR","ort":"Landkreis Sächsische Schweiz-Osterzgebirge","land":"SN","herkunft":"Pirna"},
+  {"kz":"TDO","ort":"Landkreis Nordsachsen","land":"SN","herkunft":"Torgau-Delitzsch-Oschatz"},
+  {"kz":"V","ort":"Vogtlandkreis","land":"SN","herkunft":"Vogtland"},
+  {"kz":"Z","ort":"Landkreis Zwickau","land":"SN","herkunft":"Zwickau"},
+  {"kz":"AE","ort":"Vogtlandkreis","land":"SN","herkunft":"Auerbach/Vogtl.","alt":true},
+  {"kz":"ANA","ort":"Erzgebirgskreis","land":"SN","herkunft":"Annaberg-Buchholz","alt":true},
+  {"kz":"ASZ","ort":"Erzgebirgskreis","land":"SN","herkunft":"Aue-Schwarzenberg","alt":true},
+  {"kz":"BIW","ort":"Landkreis Bautzen","land":"SN","herkunft":"Bischofswerda","alt":true},
+  {"kz":"BNA","ort":"Landkreis Leipzig","land":"SN","herkunft":"Borna","alt":true},
+  {"kz":"DL","ort":"Landkreis Mittelsachsen","land":"SN","herkunft":"Döbeln","alt":true},
+  {"kz":"DW","ort":"Landkreis Sächsische Schweiz-Osterzgebirge","land":"SN","herkunft":"Dippoldiswalde","alt":true},
+  {"kz":"DZ","ort":"Landkreis Nordsachsen","land":"SN","herkunft":"Delitzsch","alt":true},
+  {"kz":"EB","ort":"Landkreis Nordsachsen","land":"SN","herkunft":"Eilenburg","alt":true},
+  {"kz":"FLÖ","ort":"Landkreis Mittelsachsen","land":"SN","herkunft":"Flöha","alt":true},
+  {"kz":"FTL","ort":"Landkreis Sächsische Schweiz-Osterzgebirge","land":"SN","herkunft":"Freital","alt":true},
+  {"kz":"GC","ort":"Landkreis Zwickau","land":"SN","herkunft":"Glauchau (Chemnitzer Land)","alt":true},
+  {"kz":"GHA","ort":"Landkreis Leipzig","land":"SN","herkunft":"Geithain","alt":true},
+  {"kz":"GRH","ort":"Landkreis Meißen","land":"SN","herkunft":"Großenhain","alt":true},
+  {"kz":"GRM","ort":"Landkreis Leipzig","land":"SN","herkunft":"Grimma","alt":true},
+  {"kz":"HC","ort":"Landkreis Mittelsachsen","land":"SN","herkunft":"Hainichen","alt":true},
+  {"kz":"HOT","ort":"Landkreis Zwickau","land":"SN","herkunft":"Hohenstein-Ernstthal","alt":true},
+  {"kz":"HY","ort":"Landkreis Bautzen","land":"SN","herkunft":"Hoyerswerda","alt":true},
+  {"kz":"KM","ort":"Landkreis Bautzen","land":"SN","herkunft":"Kamenz","alt":true},
+  {"kz":"LÖB","ort":"Landkreis Görlitz","land":"SN","herkunft":"Löbau","alt":true},
+  {"kz":"MAB","ort":"Erzgebirgskreis","land":"SN","herkunft":"Marienberg","alt":true},
+  {"kz":"MEK","ort":"Erzgebirgskreis","land":"SN","herkunft":"Mittlerer Erzgebirgskreis","alt":true},
+  {"kz":"MTL","ort":"Landkreis Leipzig","land":"SN","herkunft":"Muldentalkreis","alt":true},
+  {"kz":"MW","ort":"Landkreis Mittelsachsen","land":"SN","herkunft":"Mittweida","alt":true},
+  {"kz":"NOL","ort":"Landkreis Görlitz","land":"SN","herkunft":"Niederschlesischer Oberlausitzkreis","alt":true},
+  {"kz":"NY","ort":"Landkreis Görlitz","land":"SN","herkunft":"Niesky","alt":true},
+  {"kz":"OVL","ort":"Vogtlandkreis","land":"SN","herkunft":"Obervogtland","alt":true},
+  {"kz":"OZ","ort":"Landkreis Nordsachsen","land":"SN","herkunft":"Oschatz","alt":true},
+  {"kz":"PL","ort":"Vogtlandkreis","land":"SN","herkunft":"Plauen","alt":true},
+  {"kz":"RC","ort":"Vogtlandkreis","land":"SN","herkunft":"Reichenbach im Vogtland","alt":true},
+  {"kz":"RG","ort":"Landkreis Meißen","land":"SN","herkunft":"Riesa-Großenhain","alt":true},
+  {"kz":"RIE","ort":"Landkreis Meißen","land":"SN","herkunft":"Riesa","alt":true},
+  {"kz":"RL","ort":"Landkreis Mittelsachsen","land":"SN","herkunft":"Rochlitz","alt":true},
+  {"kz":"SEB","ort":"Landkreis Sächsische Schweiz-Osterzgebirge","land":"SN","herkunft":"Sebnitz","alt":true},
+  {"kz":"STL","ort":"Erzgebirgskreis","land":"SN","herkunft":"Stollberg","alt":true},
+  {"kz":"SZB","ort":"Erzgebirgskreis","land":"SN","herkunft":"Schwarzenberg","alt":true},
+  {"kz":"TG","ort":"Landkreis Nordsachsen","land":"SN","herkunft":"Torgau","alt":true},
+  {"kz":"TO","ort":"Landkreis Nordsachsen","land":"SN","herkunft":"Torgau-Oschatz","alt":true},
+  {"kz":"WDA","ort":"Landkreis Zwickau","land":"SN","herkunft":"Werdau","alt":true},
+  {"kz":"WSW","ort":"Landkreis Görlitz","land":"SN","herkunft":"Weißwasser","alt":true},
+  {"kz":"WUR","ort":"Landkreis Leipzig","land":"SN","herkunft":"Wurzen","alt":true},
+  {"kz":"ZI","ort":"Landkreis Görlitz","land":"SN","herkunft":"Zittau","alt":true},
+  {"kz":"ZP","ort":"Erzgebirgskreis","land":"SN","herkunft":"Zschopau","alt":true},
+
+  // ---------- Sachsen-Anhalt ----------
+  {"kz":"ABI","ort":"Landkreis Anhalt-Bitterfeld","land":"ST","herkunft":"Anhalt-Bitterfeld"},
+  {"kz":"BK","ort":"Landkreis Börde","land":"ST","herkunft":"Börde(kreis)"},
+  {"kz":"BLK","ort":"Burgenlandkreis","land":"ST","herkunft":"Burgenlandkreis"},
+  {"kz":"DE","ort":"Dessau-Roßlau","land":"ST","herkunft":"Dessau"},
+  {"kz":"HAL","ort":"Halle (Saale)","land":"ST","herkunft":"Halle"},
+  {"kz":"HZ","ort":"Landkreis Harz","land":"ST","herkunft":"Harz"},
+  {"kz":"JL","ort":"Landkreis Jerichower Land","land":"ST","herkunft":"Jerichower Land"},
+  {"kz":"MD","ort":"Magdeburg","land":"ST","herkunft":"Magdeburg"},
+  {"kz":"MSH","ort":"Landkreis Mansfeld-Südharz","land":"ST","herkunft":"Mansfeld-Südharz"},
+  {"kz":"SAW","ort":"Altmarkkreis Salzwedel","land":"ST","herkunft":"Salzwedel"},
+  {"kz":"SDL","ort":"Landkreis Stendal","land":"ST","herkunft":"Stendal"},
+  {"kz":"SK","ort":"Saalekreis","land":"ST","herkunft":"Saalekreis"},
+  {"kz":"SLK","ort":"Salzlandkreis","land":"ST","herkunft":"Salzlandkreis"},
+  {"kz":"WB","ort":"Landkreis Wittenberg","land":"ST","herkunft":"Wittenberg"},
+  {"kz":"ASL","ort":"Salzlandkreis","land":"ST","herkunft":"Aschersleben","alt":true},
+  {"kz":"AZE","ort":"Landkreis Anhalt-Bitterfeld","land":"ST","herkunft":"Anhalt-Zerbst","alt":true},
+  {"kz":"BBG","ort":"Salzlandkreis","land":"ST","herkunft":"Bernburg (Saale)","alt":true},
+  {"kz":"BRG","ort":"Landkreis Jerichower Land","land":"ST","herkunft":"Burg","alt":true},
+  {"kz":"BTF","ort":"Landkreis Anhalt-Bitterfeld","land":"ST","herkunft":"Bitterfeld","alt":true},
+  {"kz":"EIL","ort":"Landkreis Mansfeld-Südharz","land":"ST","herkunft":"Eisleben","alt":true},
+  {"kz":"GA","ort":"Altmarkkreis Salzwedel","land":"ST","herkunft":"Gardelegen","alt":true},
+  {"kz":"GNT","ort":"Landkreis Jerichower Land","land":"ST","herkunft":"Genthin","alt":true},
+  {"kz":"HBS","ort":"Landkreis Harz","land":"ST","herkunft":"Halberstadt","alt":true},
+  {"kz":"HDL","ort":"Landkreis Börde","land":"ST","herkunft":"Haldensleben","alt":true},
+  {"kz":"HET","ort":"Landkreis Mansfeld-Südharz","land":"ST","herkunft":"Hettstedt","alt":true},
+  {"kz":"HV","ort":"Landkreis Stendal","land":"ST","herkunft":"Havelberg","alt":true},
+  {"kz":"JE","ort":"Landkreis Wittenberg","land":"ST","herkunft":"Jessen (Elster)","alt":true},
+  {"kz":"KLZ","ort":"Altmarkkreis Salzwedel","land":"ST","herkunft":"Klötze","alt":true},
+  {"kz":"KÖT","ort":"Landkreis Anhalt-Bitterfeld","land":"ST","herkunft":"Köthen (Anhalt)","alt":true},
+  {"kz":"MER","ort":"Saalekreis","land":"ST","herkunft":"Merseburg","alt":true},
+  {"kz":"ML","ort":"Landkreis Mansfeld-Südharz","land":"ST","herkunft":"Mansfelder Land","alt":true},
+  {"kz":"MQ","ort":"Saalekreis","land":"ST","herkunft":"Merseburg-Querfurt","alt":true},
+  {"kz":"NEB","ort":"Burgenlandkreis","land":"ST","herkunft":"Nebra (Unstrut)","alt":true},
+  {"kz":"NMB","ort":"Burgenlandkreis","land":"ST","herkunft":"Naumburg (Saale)","alt":true},
+  {"kz":"OBG","ort":"Landkreis Stendal","land":"ST","herkunft":"Osterburg (Altmark)","alt":true},
+  {"kz":"OC","ort":"Landkreis Börde","land":"ST","herkunft":"Oschersleben (Bode)","alt":true},
+  {"kz":"OK","ort":"Landkreis Börde","land":"ST","herkunft":"Ohrekreis","alt":true},
+  {"kz":"QFT","ort":"Saalekreis","land":"ST","herkunft":"Querfurt","alt":true},
+  {"kz":"QLB","ort":"Landkreis Harz","land":"ST","herkunft":"Quedlinburg","alt":true},
+  {"kz":"RSL","ort":"Dessau-Roßlau","land":"ST","herkunft":"Roßlau (Elbe)","alt":true},
+  {"kz":"SBK","ort":"Salzlandkreis","land":"ST","herkunft":"Schönebeck (Elbe)","alt":true},
+  {"kz":"SFT","ort":"Salzlandkreis","land":"ST","herkunft":"Staßfurt","alt":true},
+  {"kz":"SGH","ort":"Landkreis Mansfeld-Südharz","land":"ST","herkunft":"Sangerhausen","alt":true},
+  {"kz":"WMS","ort":"Landkreis Börde","land":"ST","herkunft":"Wolmirstedt","alt":true},
+  {"kz":"WR","ort":"Landkreis Harz","land":"ST","herkunft":"Wernigerode","alt":true},
+  {"kz":"WSF","ort":"Burgenlandkreis","land":"ST","herkunft":"Weißenfels","alt":true},
+  {"kz":"WZL","ort":"Landkreis Börde","land":"ST","herkunft":"Wanzleben","alt":true},
+  {"kz":"ZE","ort":"Landkreis Anhalt-Bitterfeld","land":"ST","herkunft":"Zerbst/Anhalt","alt":true},
+  {"kz":"ZZ","ort":"Burgenlandkreis","land":"ST","herkunft":"Zeitz","alt":true},
+
+  // ---------- Schleswig-Holstein ----------
+  {"kz":"FL","ort":"Flensburg","land":"SH","herkunft":"Flensburg"},
+  {"kz":"HEI","ort":"Kreis Dithmarschen","land":"SH","herkunft":"Heide"},
+  {"kz":"HL","ort":"Lübeck","land":"SH","herkunft":"Hansestadt Lübeck"},
+  {"kz":"IZ","ort":"Kreis Steinburg","land":"SH","herkunft":"Itzehoe"},
+  {"kz":"KI","ort":"Kiel","land":"SH","herkunft":"Kiel"},
+  {"kz":"NF","ort":"Kreis Nordfriesland","land":"SH","herkunft":"Nordfriesland"},
+  {"kz":"NMS","ort":"Neumünster","land":"SH","herkunft":"Neumünster"},
+  {"kz":"OD","ort":"Kreis Stormarn","land":"SH","herkunft":"Bad Oldesloe"},
+  {"kz":"OH","ort":"Kreis Ostholstein","land":"SH","herkunft":"Ostholstein"},
+  {"kz":"PI","ort":"Kreis Pinneberg","land":"SH","herkunft":"Pinneberg"},
+  {"kz":"PLÖ","ort":"Kreis Plön","land":"SH","herkunft":"Plön"},
+  {"kz":"RD","ort":"Kreis Rendsburg-Eckernförde","land":"SH","herkunft":"Rendsburg"},
+  {"kz":"RZ","ort":"Kreis Herzogtum Lauenburg","land":"SH","herkunft":"Ratzeburg"},
+  {"kz":"SE","ort":"Kreis Segeberg","land":"SH","herkunft":"Bad Segeberg"},
+  {"kz":"SL","ort":"Kreis Schleswig-Flensburg","land":"SH","herkunft":"Schleswig"},
+
+  // ---------- Thüringen ----------
+  {"kz":"ABG","ort":"Landkreis Altenburger Land","land":"TH","herkunft":"Altenburg"},
+  {"kz":"AP","ort":"Landkreis Weimarer Land","land":"TH","herkunft":"Apolda"},
+  {"kz":"EA","ort":"Eisenach / Wartburgkreis","land":"TH","herkunft":"Eisenach"},
+  {"kz":"EF","ort":"Erfurt","land":"TH","herkunft":"Erfurt"},
+  {"kz":"EIC","ort":"Landkreis Eichsfeld","land":"TH","herkunft":"Eichsfeld"},
+  {"kz":"G","ort":"Gera","land":"TH","herkunft":"Gera"},
+  {"kz":"GRZ","ort":"Landkreis Greiz","land":"TH","herkunft":"Greiz"},
+  {"kz":"GTH","ort":"Landkreis Gotha","land":"TH","herkunft":"Gotha"},
+  {"kz":"HBN","ort":"Landkreis Hildburghausen","land":"TH","herkunft":"Hildburghausen"},
+  {"kz":"IK","ort":"Ilm-Kreis","land":"TH","herkunft":"Ilm-Kreis"},
+  {"kz":"J","ort":"Jena","land":"TH","herkunft":"Jena"},
+  {"kz":"KYF","ort":"Kyffhäuserkreis","land":"TH","herkunft":"Kyffhäuser"},
+  {"kz":"NDH","ort":"Landkreis Nordhausen","land":"TH","herkunft":"Nordhausen"},
+  {"kz":"SHK","ort":"Saale-Holzland-Kreis","land":"TH","herkunft":"Saale-Holzland-Kreis"},
+  {"kz":"SHL","ort":"Suhl","land":"TH","herkunft":"Suhl"},
+  {"kz":"SLF","ort":"Landkreis Saalfeld-Rudolstadt","land":"TH","herkunft":"Saalfeld"},
+  {"kz":"SM","ort":"Landkreis Schmalkalden-Meiningen","land":"TH","herkunft":"Schmalkalden-Meiningen"},
+  {"kz":"SOK","ort":"Saale-Orla-Kreis","land":"TH","herkunft":"Saale-Orla-Kreis"},
+  {"kz":"SÖM","ort":"Landkreis Sömmerda","land":"TH","herkunft":"Sömmerda"},
+  {"kz":"SON","ort":"Landkreis Sonneberg","land":"TH","herkunft":"Sonneberg"},
+  {"kz":"UH","ort":"Unstrut-Hainich-Kreis","land":"TH","herkunft":"Unstrut-Hainich"},
+  {"kz":"WAK","ort":"Wartburgkreis","land":"TH","herkunft":"Wartburgkreis"},
+  {"kz":"WE","ort":"Weimar","land":"TH","herkunft":"Weimar"},
+  {"kz":"ARN","ort":"Ilm-Kreis","land":"TH","herkunft":"Arnstadt","alt":true},
+  {"kz":"ART","ort":"Kyffhäuserkreis","land":"TH","herkunft":"Artern","alt":true},
+  {"kz":"EIS","ort":"Saale-Holzland-Kreis","land":"TH","herkunft":"Eisenberg","alt":true},
+  {"kz":"HIG","ort":"Landkreis Eichsfeld","land":"TH","herkunft":"Heilbad Heiligenstadt","alt":true},
+  {"kz":"IL","ort":"Ilm-Kreis","land":"TH","herkunft":"Ilmenau","alt":true},
+  {"kz":"LBS","ort":"Saale-Orla-Kreis","land":"TH","herkunft":"Bad Lobenstein","alt":true},
+  {"kz":"LSZ","ort":"Unstrut-Hainich-Kreis","land":"TH","herkunft":"Bad Langensalza","alt":true},
+  {"kz":"MGN","ort":"Landkreis Schmalkalden-Meiningen","land":"TH","herkunft":"Meiningen","alt":true},
+  {"kz":"MHL","ort":"Unstrut-Hainich-Kreis","land":"TH","herkunft":"Mühlhausen","alt":true},
+  {"kz":"NH","ort":"Landkreis Sonneberg","land":"TH","herkunft":"Neuhaus am Rennweg","alt":true},
+  {"kz":"PN","ort":"Saale-Orla-Kreis","land":"TH","herkunft":"Pößneck","alt":true},
+  {"kz":"RU","ort":"Landkreis Saalfeld-Rudolstadt","land":"TH","herkunft":"Rudolstadt","alt":true},
+  {"kz":"SCZ","ort":"Saale-Orla-Kreis","land":"TH","herkunft":"Schleiz","alt":true},
+  {"kz":"SDH","ort":"Kyffhäuserkreis","land":"TH","herkunft":"Sondershausen","alt":true},
+  {"kz":"SLZ","ort":"Wartburgkreis","land":"TH","herkunft":"Bad Salzungen","alt":true},
+  {"kz":"ZR","ort":"Landkreis Greiz","land":"TH","herkunft":"Zeulenroda","alt":true},
+
+  // ---------- Weitere Altkennzeichen (Nachtrag) ----------
+  {"kz":"APD","ort":"Landkreis Weimarer Land","land":"TH","herkunft":"Apolda","alt":true},
+  {"kz":"AU","ort":"Erzgebirgskreis","land":"SN","herkunft":"Aue","alt":true},
+  {"kz":"BED","ort":"Landkreis Mittelsachsen","land":"SN","herkunft":"Brand-Erbisdorf","alt":true},
+  {"kz":"BF","ort":"Kreis Steinfurt","land":"NW","herkunft":"Burgsteinfurt","alt":true},
+  {"kz":"BOH","ort":"Kreis Borken","land":"NW","herkunft":"Bocholt","alt":true},
+  {"kz":"BRL","ort":"Landkreis Goslar","land":"NI","herkunft":"Braunlage","alt":true},
+  {"kz":"BÖ","ort":"Landkreis Börde","land":"ST","herkunft":"Bördekreis","alt":true},
+  {"kz":"ECK","ort":"Kreis Rendsburg-Eckernförde","land":"SH","herkunft":"Eckernförde","alt":true},
+  {"kz":"GHC","ort":"Landkreis Wittenberg","land":"ST","herkunft":"Gräfenhainichen","alt":true},
+  {"kz":"GW","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Greifswald (Landkreis)","alt":true},
+  {"kz":"HHM","ort":"Burgenlandkreis","land":"ST","herkunft":"Hohenmölsen","alt":true},
+  {"kz":"MED","ort":"Kreis Dithmarschen","land":"SH","herkunft":"Meldorf","alt":true},
+  {"kz":"NOR","ort":"Landkreis Aurich","land":"NI","herkunft":"Norden","alt":true},
+  {"kz":"OP","ort":"Leverkusen","land":"NW","herkunft":"Opladen","alt":true},
+  {"kz":"PK","ort":"Landkreis Prignitz","land":"BB","herkunft":"Pritzwalk","alt":true},
+  {"kz":"RI","ort":"Landkreis Schaumburg","land":"NI","herkunft":"Rinteln","alt":true},
+  {"kz":"RM","ort":"Landkreis Mecklenburgische Seenplatte","land":"MV","herkunft":"Röbel/Müritz","alt":true},
+  {"kz":"ROS","ort":"Landkreis Rostock","land":"MV","herkunft":"Rostock (Landkreis)","alt":true},
+  {"kz":"SLN","ort":"Landkreis Altenburger Land","land":"TH","herkunft":"Schmölln","alt":true},
+  {"kz":"SMÜ","ort":"Landkreis Augsburg","land":"BY","herkunft":"Schwabmünchen","alt":true},
+  {"kz":"SRO","ort":"Saale-Holzland-Kreis","land":"TH","herkunft":"Stadtroda","alt":true},
+  {"kz":"STE","ort":"Landkreis Lichtenfels","land":"BY","herkunft":"Bad Staffelstein","alt":true},
+  {"kz":"SY","ort":"Landkreis Diepholz","land":"NI","herkunft":"Syke","alt":true},
+  {"kz":"UER","ort":"Landkreis Vorpommern-Greifswald","land":"MV","herkunft":"Uecker-Randow","alt":true},
+  {"kz":"WA","ort":"Landkreis Waldeck-Frankenberg","land":"HE","herkunft":"Waldeck","alt":true},
+  {"kz":"WBS","ort":"Landkreis Eichsfeld","land":"TH","herkunft":"Worbis","alt":true},
+  {"kz":"WIS","ort":"Landkreis Nordwestmecklenburg","land":"MV","herkunft":"Wismar (Landkreis)","alt":true},
+  {"kz":"WOS","ort":"Landkreis Freyung-Grafenau","land":"BY","herkunft":"Wolfstein","alt":true},
+
+  // ---------- Landesregierungen, Landtage, Landespolizei ----------
+  {"kz":"BBL","ort":"Landesregierung / Landtag / Polizei","land":"BB","herkunft":"Brandenburg – Land","dienst":true},
+  {"kz":"BWL","ort":"Landesregierung / Landtag / Polizei","land":"BW","herkunft":"Baden-Württemberg – Land","dienst":true},
+  {"kz":"BYL","ort":"Landesregierung / Landtag / Polizei","land":"BY","herkunft":"Bayern – Land","dienst":true},
+  {"kz":"HEL","ort":"Landesregierung / Landtag / Polizei","land":"HE","herkunft":"Hessen – Land","dienst":true},
+  {"kz":"LSA","ort":"Landesregierung / Landtag / Polizei","land":"ST","herkunft":"Land Sachsen-Anhalt – Land","dienst":true},
+  {"kz":"LSN","ort":"Landesregierung / Landtag / Polizei","land":"SN","herkunft":"Land Sachsen – Land","dienst":true},
+  {"kz":"MVL","ort":"Landesregierung / Landtag / Polizei","land":"MV","herkunft":"Mecklenburg-Vorpommern – Land","dienst":true},
+  {"kz":"NL","ort":"Landesregierung / Landtag / Polizei","land":"NI","herkunft":"Niedersachsen – Land","dienst":true},
+  {"kz":"NRW","ort":"Landesregierung / Landtag / Polizei","land":"NW","herkunft":"Nordrhein-Westfalen – Land","dienst":true},
+  {"kz":"RPL","ort":"Landesregierung / Landtag / Polizei","land":"RP","herkunft":"Rheinland-Pfalz – Land","dienst":true},
+  {"kz":"SAL","ort":"Landesregierung / Landtag / Polizei","land":"SL","herkunft":"Saarland – Land","dienst":true},
+  {"kz":"SH","ort":"Landesregierung / Landtag / Polizei","land":"SH","herkunft":"Schleswig-Holstein – Land","dienst":true},
+  {"kz":"THL","ort":"Landesregierung / Landtag / Polizei","land":"TH","herkunft":"Thüringen – Land","dienst":true},
+
+  // ---------- Bundesbehörden / Sonderkennzeichen ----------
+  {"kz":"BD 1","ort":"Deutscher Bundestag","land":"BUND","herkunft":"Bund + Behördennummer 1","dienst":true},
+  {"kz":"BD 3","ort":"Bundesrat","land":"BUND","herkunft":"Bund + Behördennummer 3","dienst":true},
+  {"kz":"BD 4","ort":"Bundesverfassungsgericht","land":"BUND","herkunft":"Bund + Behördennummer 4","dienst":true},
+  {"kz":"BD 5","ort":"Bundespräsidialamt","land":"BUND","herkunft":"Bund + Behördennummer 5","dienst":true},
+  {"kz":"BD 6","ort":"Bundeskanzleramt","land":"BUND","herkunft":"Bund + Behördennummer 6","dienst":true},
+  {"kz":"BD 7","ort":"Auswärtiges Amt","land":"BUND","herkunft":"Bund + Behördennummer 7","dienst":true},
+  {"kz":"BD 9","ort":"Bundesministerium des Innern","land":"BUND","herkunft":"Bund + Behördennummer 9","dienst":true},
+  {"kz":"BD 10","ort":"Bundesministerium der Justiz","land":"BUND","herkunft":"Bund + Behördennummer 10","dienst":true},
+  {"kz":"BD 11","ort":"Bundesministerium der Finanzen","land":"BUND","herkunft":"Bund + Behördennummer 11","dienst":true},
+  {"kz":"BD 12","ort":"Bundesministerium für Wirtschaft","land":"BUND","herkunft":"Bund + Behördennummer 12","dienst":true},
+  {"kz":"BD 13","ort":"Bundesministerium für Verkehr","land":"BUND","herkunft":"Bund + Behördennummer 13","dienst":true},
+  {"kz":"BD 16","ort":"Bundesfinanzverwaltung (Zoll)","land":"BUND","herkunft":"Bund + Behördennummer 16","dienst":true},
+  {"kz":"BD 18","ort":"Bundesministerium der Verteidigung","land":"BUND","herkunft":"Bund + Behördennummer 18","dienst":true},
+  {"kz":"BD 19","ort":"Bundesministerium für Bildung und Forschung","land":"BUND","herkunft":"Bund + Behördennummer 19","dienst":true},
+  {"kz":"BD 20","ort":"Bundesministerium für Umwelt","land":"BUND","herkunft":"Bund + Behördennummer 20","dienst":true},
+  {"kz":"BD 21","ort":"Bundesministerium für Familie","land":"BUND","herkunft":"Bund + Behördennummer 21","dienst":true},
+  {"kz":"BD 22","ort":"Bundesministerium für Gesundheit","land":"BUND","herkunft":"Bund + Behördennummer 22","dienst":true},
+  {"kz":"BD 26","ort":"Bundesministerium für wirtschaftliche Zusammenarbeit","land":"BUND","herkunft":"Bund + Behördennummer 26","dienst":true},
+  {"kz":"BW","ort":"Wasserstraßen- und Schifffahrtsverwaltung","land":"BUND","herkunft":"Bundeswasserstraßen","dienst":true},
+  {"kz":"0","ort":"Diplomatisches Corps","land":"BUND","herkunft":"Diplomatenkennzeichen (0-1 = Bundespräsident)","dienst":true},
+  {"kz":"BD","ort":"Bundestag, Bundesrat, Bundesregierung","land":"BUND","herkunft":"Bund","dienst":true},
+  {"kz":"BP","ort":"Bundespolizei","land":"BUND","herkunft":"Bundespolizei","dienst":true},
+  {"kz":"THW","ort":"Technisches Hilfswerk","land":"BUND","herkunft":"Technisches Hilfswerk","dienst":true},
+  {"kz":"X","ort":"NATO-Fahrzeuge","land":"BUND","herkunft":"Internationale Hauptquartiere (NATO)","dienst":true},
+  {"kz":"Y","ort":"Bundeswehr","land":"BUND","herkunft":"Bundeswehr","dienst":true}
+];
+
+/* Bundesländer: Kürzel → Anzeigename (Reihenfolge = Reihenfolge in Statistik & Filter) */
+const LAENDER = {
+  BW: "Baden-Württemberg", BY: "Bayern", BE: "Berlin", BB: "Brandenburg",
+  HB: "Bremen", HH: "Hamburg", HE: "Hessen", MV: "Mecklenburg-Vorpommern",
+  NI: "Niedersachsen", NW: "Nordrhein-Westfalen", RP: "Rheinland-Pfalz", SL: "Saarland",
+  SN: "Sachsen", ST: "Sachsen-Anhalt", SH: "Schleswig-Holstein", TH: "Thüringen",
+  BUND: "Bundesbehörden & Sonder"
+};
+
+/* =========================================================================
+   SPEICHER (localStorage)
+   Format: { collected: { "M": "2026-11-12T20:49:00.000Z", ... }, theme: "auto" }
+   ========================================================================= */
+const STORE_KEY = "kennzeichen-sammler-v1";
+
+function loadState() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (raw && typeof raw.collected === "object") return { collected: raw.collected, theme: raw.theme || "auto" };
+  } catch (e) { /* defekte oder fehlende Daten → neu starten */ }
+  return { collected: {}, theme: "auto" };
+}
+function saveState(fromRemote) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* z. B. privater Modus */ }
+  if (!fromRemote) pushRemote();
+}
+
+/* =========================================================================
+   CLOUD-SYNC (nur wenn die App als Claude-Artifact läuft)
+   Gespeichert wird ein privates Dokument pro Person: data/users/<id>/sammlung
+   Lokal (Datei im Browser) fällt das einfach weg – dann gilt nur localStorage.
+   ========================================================================= */
+let remoteRef = null, remoteWriting = false, remotePending = false, syncStatus = "lokal";
+
+function pushRemote() {
+  if (!remoteRef) return;
+  if (remoteWriting) { remotePending = true; return; }
+  remoteWriting = true;
+  remoteRef.set({ collected: state.collected, updatedAt: new Date().toISOString() })
+    .then(() => setSync("sync"))
+    .catch(e => setSync(e && e.code === "invalid_argument" ? "lokal" : "fehler"))
+    .finally(() => {
+      remoteWriting = false;
+      if (remotePending) { remotePending = false; pushRemote(); }
+    });
+}
+
+function setSync(st) {
+  syncStatus = st;
+  const el = $("syncInfo"); if (!el) return;
+  el.textContent = {
+    lokal: "Gespeichert nur in diesem Browser.",
+    laden: "Verbinde mit deinem Claude-Konto …",
+    sync: "Synchronisiert mit deinem Claude-Konto – auf Handy und Laptop gleich.",
+    fehler: "Synchronisierung gerade nicht erreichbar – lokal gespeichert."
+  }[st];
+}
+
+async function initSync() {
+  if (!window.claude || typeof window.claude.use !== "function") return;
+  try {
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    if (!db || !user) return;
+    const uid = await user.id();
+    if (!uid) return;
+    remoteRef = db.doc("data/users/" + uid + "/sammlung");
+    setSync("laden");
+    let first = true;
+    const timer = setTimeout(() => setSync("fehler"), 10000);
+    remoteRef.onSnapshot(snap => {
+      if (snap.metadata.hasPendingWrites) return;
+      if (!snap.metadata.fromCache) clearTimeout(timer);
+      const remote = snap.exists ? (snap.data().collected || {}) : {};
+      if (first && !snap.metadata.fromCache) {
+        first = false;
+        // Erste Verbindung: lokal und online zusammenführen
+        const merged = { ...remote };
+        for (const [kz, iso] of Object.entries(state.collected)) if (!merged[kz]) merged[kz] = iso;
+        const changed = JSON.stringify(merged) !== JSON.stringify(remote);
+        state.collected = merged;
+        saveState(true);
+        if (changed) pushRemote(); else setSync("sync");
+      } else if (!first) {
+        state.collected = { ...remote };
+        saveState(true);
+        setSync("sync");
+      }
+      renderAll();
+    }, () => { clearTimeout(timer); setSync("fehler"); });
+  } catch (e) { setSync("lokal"); }
+}
+
+let state = loadState();
+const ui = { view: "liste", filter: "alle", land: "", q: "" };
+const BY_KZ = Object.fromEntries(KENNZEICHEN.map(k => [k.kz, k]));
+
+/* =========================================================================
+   HILFSFUNKTIONEN
+   ========================================================================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Kürzel normalisieren: Groß-/Kleinschreibung, Leerzeichen und Umlaute egal ("mu" findet "MÜ", "bd1" findet "BD 1")
+const norm = s => String(s).toUpperCase().replace(/[\s-]/g, "")
+  .replace(/Ä/g, "A").replace(/Ö/g, "O").replace(/Ü/g, "U");
+const fmtDate = iso => new Date(iso).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 : 0;
+const pctStr = (a, b) => pct(a, b).toLocaleString("de-DE") + " %";
+
+// EU-Sternenkranz als kleines SVG
+const STARS = (() => {
+  let c = "";
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2;
+    c += `<circle cx="${(10 + 7 * Math.cos(a)).toFixed(2)}" cy="${(10 + 7 * Math.sin(a)).toFixed(2)}" r="1.3" fill="#ffcc00"/>`;
+  }
+  return `<svg viewBox="0 0 20 20" aria-hidden="true">${c}</svg>`;
+})();
+const plateHTML = (kz, big) =>
+  `<span class="plate${big ? " big" : ""}" aria-label="Kennzeichen ${esc(kz)}">
+     <span class="eu">${STARS}<span>D</span></span>
+     <span class="code">${esc(kz)}<span class="seals"><i></i><i></i></span></span>
+   </span>`;
+
+// Precomputed Suchtexte
+const SEARCH = KENNZEICHEN.map(k => ({ k, kz: norm(k.kz) }));
+
+/* =========================================================================
+   RENDERING
+   ========================================================================= */
+function filtered() {
+  const q = norm(ui.q.trim());
+  let rows = SEARCH.filter(r => {
+    if (ui.land && r.k.land !== ui.land) return false;
+    const done = !!state.collected[r.k.kz];
+    if (ui.filter === "gesammelt" && !done) return false;
+    if (ui.filter === "fehlend" && done) return false;
+    if (!q) return true;
+    return r.kz.startsWith(q);
+  });
+  if (q) {
+    // Ranking: exakter Treffer > Kürzel beginnt mit … > Ortsname
+    const rank = r => r.kz === q ? 0 : 1;
+    rows.sort((a, b) => rank(a) - rank(b) || a.k.kz.localeCompare(b.k.kz, "de", { numeric: true }));
+  } else {
+    rows.sort((a, b) => a.k.kz.localeCompare(b.k.kz, "de", { numeric: true }));
+  }
+  return rows.map(r => r.k);
+}
+
+function renderList() {
+  const rows = filtered();
+  $("resultInfo").textContent = `${rows.length} ${rows.length === 1 ? "Kennzeichen" : "Kennzeichen"}` +
+    (ui.q || ui.land || ui.filter !== "alle" ? " gefunden" : "");
+  if (!rows.length) {
+    $("list").innerHTML = `<li class="empty">Kein Kürzel gefunden.</li>`;
+    return;
+  }
+  $("list").innerHTML = rows.map(k => {
+    const when = state.collected[k.kz];
+    const meta = when ? "✓ " + fmtDate(when) : `${k.herkunft} · ${LAENDER[k.land]}`;
+    return `<li><button class="item${when ? " done" : ""}" data-kz="${esc(k.kz)}">
+      ${plateHTML(k.kz)}
+      <span class="info">
+        <span class="ort">${esc(k.ort)}${k.alt ? '<span class="badge">Alt</span>' : ""}${k.dienst ? '<span class="badge">Dienst</span>' : ""}</span>
+        <span class="meta" style="display:block">${esc(meta)}</span>
+      </span>
+      <span class="check">✓</span>
+    </button></li>`;
+  }).join("");
+}
+
+function renderHeader() {
+  const n = Object.keys(state.collected).filter(kz => BY_KZ[kz]).length;
+  const t = KENNZEICHEN.length;
+  $("cnt").textContent = n;
+  $("total").textContent = t;
+  $("pct").textContent = pctStr(n, t);
+  $("bar").style.width = pct(n, t) + "%";
+}
+
+function renderStats() {
+  const total = KENNZEICHEN.length;
+  const n = KENNZEICHEN.filter(k => state.collected[k.kz]).length;
+  const altTotal = KENNZEICHEN.filter(k => k.alt).length;
+  const altN = KENNZEICHEN.filter(k => k.alt && state.collected[k.kz]).length;
+  let completeLands = 0;
+  const rows = Object.entries(LAENDER).map(([code, name]) => {
+    const all = KENNZEICHEN.filter(k => k.land === code);
+    const got = all.filter(k => state.collected[k.kz]).length;
+    if (all.length && got === all.length) completeLands++;
+    return `<button class="land-row${got === all.length && all.length ? " complete" : ""}" data-land="${code}">
+      <div class="line"><b>${esc(name)}</b><span>${got} / ${all.length} · ${pctStr(got, all.length)}</span></div>
+      <div class="bar"><i style="width:${pct(got, all.length)}%"></i></div>
+    </button>`;
+  }).join("");
+  $("landStats").innerHTML = rows;
+  $("statGrid").innerHTML = `
+    <div><b>${n}</b><span>gesammelt</span></div>
+    <div><b>${total - n}</b><span>fehlen noch</span></div>
+    <div><b>${completeLands}</b><span>Länder komplett</span></div>
+    <div><b>${KENNZEICHEN.filter(k => !k.alt && state.collected[k.kz]).length}</b><span>Hauptkennz.</span></div>
+    <div><b>${altN} / ${altTotal}</b><span>Altkennzeichen</span></div>
+    <div><b>${todayCount()}</b><span>heute</span></div>`;
+}
+function todayCount() {
+  const d = new Date().toDateString();
+  return Object.values(state.collected).filter(iso => new Date(iso).toDateString() === d).length;
+}
+
+function renderHistory() {
+  const list = Object.entries(state.collected)
+    .filter(([kz]) => BY_KZ[kz])
+    .sort((a, b) => b[1].localeCompare(a[1]))
+    .slice(0, 100);
+  $("history").innerHTML = list.length ? list.map(([kz, iso]) => {
+    const k = BY_KZ[kz];
+    return `<div class="history-item">${plateHTML(kz)}<div><div class="ort">${esc(k.ort)}</div><div class="when">${fmtDate(iso)}</div></div></div>`;
+  }).join("") : `<p class="empty">Noch nichts gesammelt. Los geht's! 🚗</p>`;
+}
+
+function renderAll() {
+  renderHeader();
+  if (ui.view === "liste") renderList();
+  if (ui.view === "stats") renderStats();
+  if (ui.view === "verlauf") renderHistory();
+}
+
+/* =========================================================================
+   AKTIONEN
+   ========================================================================= */
+let toastTimer, lastCollected = null;
+
+function collect(kz) {
+  state.collected[kz] = new Date().toISOString();
+  saveState();
+  lastCollected = kz;
+  showToast(`${kz} gesammelt 🎉`, true);
+  if (navigator.vibrate) navigator.vibrate(30);
+  renderAll();
+}
+
+function showToast(text, withUndo) {
+  $("toastText").textContent = text;
+  $("toastUndo").classList.toggle("hidden", !withUndo);
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("toast").classList.remove("show"), 4000);
+}
+
+// Sicherheitsabfrage – liefert Promise<boolean>
+function confirmDialog({ kz, title, text, ok = "Entfernen" }) {
+  return new Promise(resolve => {
+    const d = $("dlg");
+    $("dlgPlate").innerHTML = kz ? plateHTML(kz, true) : "";
+    $("dlgTitle").textContent = title;
+    $("dlgText").textContent = text;
+    $("dlgOk").textContent = ok;
+    const done = val => { d.close(); $("dlgOk").onclick = $("dlgCancel").onclick = null; resolve(val); };
+    $("dlgOk").onclick = () => done(true);
+    $("dlgCancel").onclick = () => done(false);
+    d.oncancel = e => { e.preventDefault(); done(false); };
+    $("toast").classList.remove("show");
+    d.showModal();
+  });
+}
+
+async function askRemove(kz) {
+  const k = BY_KZ[kz];
+  const ok = await confirmDialog({
+    kz,
+    title: `${kz} wieder entfernen?`,
+    text: `${k.ort} – gesammelt am ${fmtDate(state.collected[kz])}.`
+  });
+  if (ok) {
+    delete state.collected[kz];
+    saveState();
+    showToast(`${kz} entfernt`, false);
+    renderAll();
+  }
+}
+
+function setView(v) {
+  ui.view = v;
+  ["liste", "stats", "verlauf", "daten"].forEach(x => $("view-" + x).classList.toggle("hidden", x !== v));
+  $("listControls").classList.toggle("hidden", v !== "liste");
+  document.querySelectorAll("nav.bottom button").forEach(b => b.classList.toggle("active", b.dataset.v === v));
+  window.scrollTo(0, 0);
+  renderAll();
+  focusSearch();
+}
+
+function applyTheme() {
+  const t = state.theme === "auto"
+    ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+    : state.theme;
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#0b1120" : "#f1f5f9";
+  document.querySelectorAll("#themeChips button").forEach(b => b.classList.toggle("active", b.dataset.t === state.theme));
+}
+
+/* ---------- Export / Import ---------- */
+async function exportData() {
+  const data = {
+    app: "kennzeichen-sammler",
+    version: 1,
+    exportiertAm: new Date().toISOString(),
+    anzahl: Object.keys(state.collected).length,
+    collected: state.collected
+  };
+  const json = JSON.stringify(data, null, 2);
+  const filename = `kennzeichen-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const dl = window.claude && typeof window.claude.use === "function" ? await claude.use("downloads").catch(() => null) : null;
+  if (dl) {
+    try { await dl.save({ filename, data: json }); } catch (e) { showToast("Export abgebrochen", false); }
+    return;
+  }
+  const blob = new Blob([json], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function importData(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    const col = data && data.collected;
+    if (!col || typeof col !== "object") throw new Error("Kein gültiges Backup");
+    const clean = {};
+    for (const [kz, iso] of Object.entries(col)) {
+      if (typeof kz === "string" && !isNaN(Date.parse(iso))) clean[kz] = new Date(iso).toISOString();
+    }
+    const n = Object.keys(clean).length;
+    const ok = await confirmDialog({
+      title: "Backup importieren?",
+      text: `Das Backup enthält ${n} Kennzeichen. Deine aktuellen Daten (${Object.keys(state.collected).length}) werden dadurch ersetzt.`,
+      ok: "Ersetzen"
+    });
+    if (!ok) return;
+    state.collected = clean;
+    saveState();
+    showToast(`${n} Kennzeichen importiert`, false);
+    renderAll();
+  } catch (e) {
+    showToast("Import fehlgeschlagen: " + e.message, false);
+  }
+}
+
+/* =========================================================================
+   EVENTS
+   ========================================================================= */
+$("list").addEventListener("click", e => {
+  const btn = e.target.closest(".item");
+  if (!btn) return;
+  const kz = btn.dataset.kz;
+  if (state.collected[kz]) { askRemove(kz); return; }
+  collect(kz);
+  if (ui.q) { ui.q = ""; $("q").value = ""; $("clearQ").classList.add("hidden"); renderList(); }
+  focusSearch();
+});
+
+$("q").addEventListener("input", e => {
+  ui.q = e.target.value;
+  $("clearQ").classList.toggle("hidden", !ui.q);
+  renderList();
+});
+// Enter: obersten (noch nicht gesammelten) Treffer abhaken – praktisch am Laptop
+$("q").addEventListener("keydown", e => {
+  if (e.key !== "Enter" || !ui.q.trim()) return;
+  const top = filtered()[0];
+  if (top && !state.collected[top.kz] && norm(top.kz) === norm(ui.q.trim())) {
+    collect(top.kz);
+    ui.q = ""; $("q").value = ""; $("clearQ").classList.add("hidden");
+    renderList();
+  }
+});
+$("clearQ").addEventListener("click", () => {
+  ui.q = ""; $("q").value = ""; $("clearQ").classList.add("hidden");
+  renderList(); $("q").focus();
+});
+
+$("statusChips").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  ui.filter = b.dataset.f;
+  document.querySelectorAll("#statusChips button").forEach(x => x.classList.toggle("active", x === b));
+  renderList();
+});
+
+$("landSel").innerHTML = `<option value="">Alle Bundesländer</option>` +
+  Object.entries(LAENDER).map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join("");
+$("landSel").addEventListener("change", e => { ui.land = e.target.value; renderList(); });
+
+$("landStats").addEventListener("click", e => {
+  const b = e.target.closest(".land-row"); if (!b) return;
+  ui.land = b.dataset.land; $("landSel").value = ui.land;
+  setView("liste");
+});
+
+document.querySelector("nav.bottom").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (b) setView(b.dataset.v);
+});
+
+$("toastUndo").addEventListener("click", () => {
+  if (lastCollected) { delete state.collected[lastCollected]; saveState(); lastCollected = null; }
+  $("toast").classList.remove("show");
+  renderAll();
+});
+
+$("exportBtn").addEventListener("click", exportData);
+$("importBtn").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", e => {
+  if (e.target.files[0]) importData(e.target.files[0]);
+  e.target.value = "";
+});
+$("resetBtn").addEventListener("click", async () => {
+  const ok = await confirmDialog({
+    title: "Wirklich alles löschen?",
+    text: `${Object.keys(state.collected).length} gesammelte Kennzeichen gehen verloren. Tipp: Vorher exportieren.`,
+    ok: "Alles löschen"
+  });
+  if (ok) { state.collected = {}; saveState(); renderAll(); showToast("Alle Daten gelöscht", false); }
+});
+
+$("themeChips").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.theme = b.dataset.t; saveState(); applyTheme();
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+
+/* =========================================================================
+   START
+   ========================================================================= */
+function focusSearch() {
+  if (ui.view === "liste") $("q").focus({ preventScroll: true });
+}
+$("qEu").innerHTML = STARS + "<span>D</span>";
+applyTheme();
+renderAll();
+focusSearch();
+initSync();
+</script>
+</body>
+</html>
